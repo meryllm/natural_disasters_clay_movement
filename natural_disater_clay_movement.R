@@ -1,0 +1,4915 @@
+## ######################################################## ##
+##    Natural Disasters in France (Clay Soils Movement)     ##
+## ######################################################## ##
+##             HarvardX - Data Science : Capstone           ##
+##############################################################
+# Date : 2025-05-04
+# Author:  Meryll Mercadier
+
+#############
+## Preface ##
+#############
+# This project is an assessment, part of the online course "HarvardX: Data Science: Capstone" from Harvard University on Edx platform ("https://www.edx.org/learn/data-science/harvard-university-data-science-capstone"). 
+# The HarvardX: Data Science: Capstone" is the last part of a global "Professional Certificate Program in Data Science" from Harvard University on Edx platform ("https://pll.harvard.edu/series/professional-certificate-data-science")
+# The purpose of this project is to autonomously put into practice all the knowledge learned during the past courses. 
+# The following code will be highly commented in order to facilitate its readability and evaluation.
+# As English is not my native language, part of the comments meaning can be lost due to a wrong translation. Please take it in consideration by evaluating this project.
+
+
+#############
+## Summary ## 
+#############
+# Creating project file & defining working directory
+# Installing all packages needed
+  #> Data downloading and reading
+  #> Data wrangling and analysis
+  #> Data visualization
+  #> Machine Learning and Modeling
+# Introduction
+  #> Context
+  #> Project
+  #> Data
+# Data collection and preparation
+  #> Importing the History of requests and acknowledgement of "natural disasters"
+  #> Importing the cities gps position 
+  #> Importing the historical weather conditions
+  #> Importing every year population size for each city
+  #> Importing "Mapping of the exposure of individual houses to clay movements" dataset 
+  #> Importing "Typology of the vulnerability of municipalities to climate risks" dataset 
+  #> Importing "History of drought states" dataset 
+# Data Exploration & Analysis  
+  #> Analyzing "Year"
+  #> Analyzing "cumul_precipit"
+  #> Analyzing "mean_temp_summer"
+  #> Analyzing "nat_dis_group"
+  #> Analyzing "mean_temp"
+  #> Analyzing "mean_temp_winter"
+  #> Analyzing "mean_humid"
+  #> Analyzing "mean_ET"
+  #> Analyzing "mean_radiation"
+  #> Analyzing "n_high_risk_houses"
+  #> Analyzing "natural_disaster"
+# Model Building
+  #> Dataset
+  #> Value to predict
+  #> Models selection
+  #> Multiclass prediction models 
+    #> Metrics & Target
+    #> Creating Train & Test Set
+    #> Naive Model
+    #>M1 - Random Forest - (all selected_predictors)
+    #> M2 - Random Forest - (all selected_predictors + minus " nat_dis_group")
+    #> Checking missing values impact
+    #> M3 - Random Forest - (all selected_predictors + minus " nat_dis_group" + NAs replaced by average department)
+    #> M4 - Random Forest - (all selected_predictors + minus " nat_dis_group" + NAs replaced by average department + random_weighted)
+    #> M5 - Ranger - (all selected_predictors + minus " nat_dis_group" + NAs replaced by average department)
+    #> M6 - Ranger - (all selected_predictors + minus " nat_dis_group" + NAs replaced by average department + best_weight)
+ #> Binary prediction Models
+    #> Metrics & Target
+    #> Creating Train & Test Set
+    #> Naive Model 
+    #> M1 - Random Forest - best_predictors
+    #> M2 - Random Forest - (best_predictors + NA replaced)
+    #> M3 - Random Forest - (best_predictors + NA replaced + weighted)
+    #> M4 - Ranger - (best_predictors + NA replaced)
+    #> M5 - Ranger - (best_predictors + NA replaced + weighted)
+    #> M6 - Ranger - (best_predictors + NA replaced + weighted + threshold)
+    #> M7 - Ranger - (best_predictors + NA replaced + weighted + threshold + cross validation)
+    #> M8 - XG BOOST (best_predictors + NA replaced + weighted + threshold)
+    #> M9 - XG BOOST (best_predictors + NA replaced + weighted + threshold + cross validation)
+# Conclusion
+  #> Context
+  #> Results
+  #> Improvement
+  #> Next Steps
+# Sources and citations
+
+
+########################################################
+## Creating project file & defining working directory ##
+########################################################
+file_dir <- file.path(path.expand("~"), "natural_disaster_prediction_france")
+
+if (!dir.exists(file_dir)) {
+  dir.create(file_dir)
+  message("File created in: ", file_dir)
+} else {
+  message("File already exist in: ", file_dir)
+}
+
+# Defining the working Directory
+setwd(file_dir)
+
+####################################
+## Installing all packages needed ##
+####################################
+
+## Data downloading and reading
+###############################
+if(!require(readxl)) install.packages("readxl", repos = "http://cran.us.r-project.org")
+library(readxl)
+
+if(!require(scales)) install.packages("scales", repos = "http://cran.us.r-project.org")
+library(scales)
+
+if(!require(httr)) install.packages("httr", repos = "http://cran.us.r-project.org")
+library(httr)
+
+if(!require(magick)) install.packages("httr", repos = "http://cran.us.r-project.org")
+library(magick)
+
+# Data wrangling and analysis
+#############################
+if(!require(tidyverse)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
+library(tidyverse)
+
+if(!require(dplyr)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
+library(dplyr)
+
+if(!require(geodist)) install.packages("httr", repos = "http://cran.us.r-project.org")
+library(geodist)
+
+## Data visualization
+#####################
+if(!require(corrplot)) install.packages("httr", repos = "http://cran.us.r-project.org")
+library(corrplot)
+
+if(!require(Hmisc)) install.packages("httr", repos = "http://cran.us.r-project.org")
+library(Hmisc)
+
+if(!require(plotly)) install.packages("httr", repos = "http://cran.us.r-project.org")
+library(plotly)
+
+if(!require(leaflet)) install.packages("httr", repos = "http://cran.us.r-project.org")
+library(leaflet)
+
+## Machine Learning and Modeling
+################################
+if(!require(caret)) install.packages("caret", repos = "http://cran.us.r-project.org")
+library(caret)
+
+if(!require(randomForest)) install.packages("httr", repos = "http://cran.us.r-project.org")
+library(randomForest)
+
+if(!require(ranger)) install.packages("httr", repos = "http://cran.us.r-project.org")
+library(ranger)
+
+if(!require(xgboost)) install.packages("httr", repos = "http://cran.us.r-project.org")
+library(xgboost)
+
+if(!require(Matrix)) install.packages("httr", repos = "http://cran.us.r-project.org")
+library(Matrix)
+
+
+##################
+## Introduction ##
+##################
+
+# Context
+# -------
+# Superficial clay soils undergo volume variations depending on their water content, 
+# which is influenced by weather conditions. During drought periods, they shrink, 
+# while they swell when the rains return. Although these changes occur gradually, 
+# their magnitude can cause damage to buildings located on such soils.
+
+# This shrink-swell phenomenon of clays is responsible for numerous damages each year, 
+# primarily affecting individual houses.
+
+# In France, municipalities can request recognition of natural disasters from the government. 
+# When the government declares a state of natural disaster in a municipality, 
+# affected individuals become eligible for compensation through their insurance.
+
+# Project 
+# -------
+# Based on public data, can we make predictions about the recognition and requests 
+# for natural disasters related to clay movements in French municipalities?
+
+# Data 
+# ----
+# By reading the information note on the risks of clay shrinkage and swelling on the GEORISQUE website, 
+# we obtain all the information allowing us to define the data we need.
+# for more informartion : https://www.georisques.gouv.fr/consulter-les-dossiers-thematiques/retrait-gonflement-des-argiles#:~:text=Les%20ph%C3%A9nom%C3%A8nes%20climatiques%20exceptionnels%20sont,teneur%20en%20eau%20du%20sol.
+# To carry out this project we therefore need the following data:
+# -> a history of requests and acknowledgement of natural disasters linked to clays movements
+# -> mapping of clay soils in france
+# -> all soil drought histories (or weather data that can induce droughts)
+# -> all soil moisture histories (or weather data that can induce droughts)
+
+
+#####################################
+## Data collection and preparation ##
+#####################################
+
+# Here are the public databases we will use to carry out this project : 
+
+# -> History of requests and acknowledgement of "natural disasters" per ciy, linked to clay movements.
+# Imported from "www.data.gouv.fr" (Open platform for French public data), from the following link :
+# "https://www.data.gouv.fr/fr/datasets/sols-argileux-et-catastrophes-naturelles/"
+
+# -> Cities exposure to climate risks in 2016
+# Imported from "www.statistiques.developpement-durable.gouv.fr", from the following link :
+# "https://www.statistiques.developpement-durable.gouv.fr/risques-climatiques-six-francais-sur-dix-sont-dores-et-deja-concernes"
+
+# -> "Map of exposure to the phenomenon of shrinkage-swelling of clays covers metropolitan France (excluding the city of Paris)"
+# Imported from "www.georisques.gouv.fr", from the following link : 
+# https://www.georisques.gouv.fr/donnees/bases-de-donnees/retrait-gonflement-des-argiles
+
+# -> # GPS positions of all French cities
+# Imported from "www.data.gouv.fr", from the following link :
+# https://www.data.gouv.fr/fr/datasets/villes-de-france/#/community-resources
+
+# -> Monthly basic climatological data by department (from 1950 to 2023)
+# Imported from "www.data.gouv.fr" (data collected by "Météo-France"), from the following link: 
+# https://meteo.data.gouv.fr/datasets/6569b3d7d193b4daf2b43edc
+
+# -> Population size per city per year
+# Imported from "www.insee.fr", from the following link: 
+# https://www.insee.fr/fr/statistiques/3698339
+
+# -> History of droughts by municipality
+# Imported from "www.data.gouv.fr", from the following link: 
+# https://www.data.gouv.fr/fr/datasets/donnee-secheresse-vigieau/#/resources
+
+
+
+## Importing the History of requests and acknowledgement of "natural disasters"
+###############################################################################
+
+# -> "https://www.data.gouv.fr/fr/datasets/sols-argileux-et-catastrophes-naturelles/"
+data_base_1 <- "data_base_1"
+if(!file.exists(data_base_1))
+  download.file("https://www.ccomptes.fr/sites/default/files/2022-02/20220215-sols-argileux-catastrophes-naturelles-donnees-1.zip", data_base_1)
+
+# Preparing the table : Natural Disasters by City
+nat_dis_city <- "D_Base arrêtés Cat Nat brute.csv"
+if(!file.exists(nat_dis_city))
+  unzip(data_base_1, nat_dis_city)
+
+nat_dis_city <- as.data.frame(str_split(read_lines(nat_dis_city), fixed(";"), simplify = TRUE),
+                         stringsAsFactors = FALSE)
+# Adding colnames
+colnames(nat_dis_city)<-nat_dis_city[1,]
+nat_dis_city<-nat_dis_city[-1,]
+
+
+# Keeping only usefull columns
+nat_dis_city<-nat_dis_city%>%select("N° Insee","Département",
+                                    "Nom de la commune",
+                                    "Année évènement",
+                                    "Décision")
+head(nat_dis_city)
+#Translating the column names to English
+#_(The decision delay is from the end date of the event to the date the decision is taken)_
+#_(Nat_dis stand for "Natural Disaster")_
+colnames(nat_dis_city)<-c("insee_code",
+                          "department",
+                          "city",
+                          "year",
+                          "is_nat_dis")
+
+# We replace characters with binary data and create the column demand
+nat_dis_city<-nat_dis_city%>%
+  mutate(is_nat_dis=ifelse(is_nat_dis=="Reconnue",1,0),
+         demand=1,year=as.numeric(year))
+
+# As the available weather conditions database are grouped by department,
+# to facilitate the treatment in this study, 
+# we will only focus on the departments of metropolitan France (from 1 to 96)
+colnames(nat_dis_city)
+studied_dep<-data.frame(department=seq(1:96))
+studied_dep<-studied_dep%>%mutate(department=
+                       as.character(ifelse(nchar(department)<2,
+                                           paste(0,department,sep=""),
+                                           department)))
+studied_dep
+# It seem's we have several lines for a same city, so we keep only one row per city
+nat_dis_city<-nat_dis_city%>%
+  mutate(city_year=paste(insee_code,"-",year))%>%
+  group_by(insee_code,year,city_year)%>%
+  summarise(demand=ifelse(sum(demand)>0,1,0),
+            nat_dis=ifelse(sum(is_nat_dis)>0,1,0),
+            .groups="drop")
+
+## Importing the cities gps position 
+####################################
+# Downloading public database containing gps positions of all French cities (https://www.data.gouv.fr/fr/datasets/villes-de-france/#/community-resources)
+cities_gps <- "cities_gps"
+if(!file.exists(cities_gps))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/51606633-fb13-4820-b795-9a2a575a72f1",cities_gps)
+
+cities_gps <- as.data.frame(str_split(read_lines(cities_gps), fixed(","), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(cities_gps)<-cities_gps[1,]
+cities_gps<-cities_gps[-1,]
+cities_gps<-cities_gps[!duplicated(cities_gps$insee_code), ] #Keeping only unique values
+
+head(cities_gps)
+# Insee_code correction in "nat_dis_city" for good matching with "citites_gps" 
+nat_dis_city<-nat_dis_city%>%mutate(insee_code=as.character(ifelse(nchar(insee_code)<5,
+                                               paste(0,insee_code,sep=""),
+                                               insee_code)))
+
+# Checking if some cities are in natural disaster dataframe and not in our gps dataframe :
+nat_dis_city%>%
+  filter(!insee_code%in%cities_gps$insee_code)%>%
+  pull(insee_code)%>%
+  n_distinct()
+# By analyzing our "nat_dis_city" we can see that 175 cities are are not in gps dataframe.
+# this probably means that those cities changed their name after the meteorological sampling
+# To correct this we could replace those cities by the next city according the zip_code order 
+# But to go faster in this project we will only filter them out. 
+nrow(nat_dis_city)
+nat_dis_city<-nat_dis_city%>%filter(insee_code%in%cities_gps$insee_code)
+nrow(nat_dis_city) 
+
+# Checking if all cities are in our natural disaster dataframe are missing in the cities gps dataframe:
+nat_dis_city%>%filter(!insee_code%in%cities_gps$insee_code)%>%
+  pull(insee_code)%>%n_distinct()
+# No cities are missing.
+
+# Creating rows when cities didn't make the request for acknowledgement of natural disaster.
+cities_gps<-cities_gps%>%filter(department_number%in%studied_dep$department) # Filtering cities_gps on department studied here
+cities<-data.frame(insee_code=unique(cities_gps$insee_code)) # Creating unique cities dataframe
+years<-data.frame(years=seq(from=min(nat_dis_city$year),to=max(nat_dis_city$year),by=1)) #Creating unique years dataframe
+
+# Creating all possible request 
+all_possible_demands<-expand.grid(cities$insee_code,years$years)
+head(all_possible_demands)
+head(nat_dis_city)
+all_possible_demands<-all_possible_demands%>%
+  mutate(
+  insee_code=Var1,
+  year=Var2,
+  city_year=paste(Var1,"-",Var2),
+  demand=0,
+  nat_dis=0)%>%
+  select(insee_code,year,city_year,demand,nat_dis)%>%
+  filter(!city_year%in%nat_dis_city$city_year)
+
+# Creating our main table (df) by adding "all_possible_demands" to "nat_dis_city"
+df<-union(nat_dis_city,all_possible_demands)%>%
+  select(-city_year)
+
+
+
+## Importing the historical weather conditions
+##############################################
+# Now let's download the weather data for each of the french departments
+  # Department 57
+data_weather_57<-"data_weather_57"
+if(!file.exists(data_weather_57))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/b4c28470-3957-4e2c-82bf-dee0b972d770", 
+                data_weather_57)
+weather_57 <- as.data.frame(str_split(read_lines(data_weather_57), fixed(";"), simplify = TRUE),
+                             stringsAsFactors = FALSE)
+colnames(weather_57)<-weather_57[1,]
+weather_57<-weather_57[-1,]
+
+  # Department 03
+data_weather_03<-"data_weather_03"
+if(!file.exists(data_weather_03))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/294c43cd-9071-4ef0-bc8b-5080c5401960", 
+                data_weather_03)
+weather_03 <- as.data.frame(str_split(read_lines(data_weather_03), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_03)<-weather_03[1,]
+weather_03<-weather_03[-1,]
+
+  # Department 71
+data_weather_71<-"data_weather_71"
+if(!file.exists(data_weather_71))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/46732f42-be77-41ce-971e-65ff3d63103f", 
+                data_weather_71)
+weather_71 <- as.data.frame(str_split(read_lines(data_weather_71), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_71)<-weather_71[1,]
+weather_71<-weather_71[-1,]
+head(weather_71)
+
+  # Department 33
+data_weather_33<-"data_weather_33"
+if(!file.exists(data_weather_33))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/61b7eee7-24a7-4396-809a-161dd8b1c145", 
+                data_weather_33)
+weather_33 <- as.data.frame(str_split(read_lines(data_weather_33), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_33)<-weather_33[1,]
+weather_33<-weather_33[-1,]
+head(weather_33)
+
+  # Department 32
+data_weather_32<-"data_weather_32"
+if(!file.exists(data_weather_32))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/cccfa607-6b57-4f2c-afa2-fd69150d4cda", 
+                data_weather_32)
+weather_32 <- as.data.frame(str_split(read_lines(data_weather_32), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_32)<-weather_32[1,]
+weather_32<-weather_32[-1,]
+head(weather_32)
+
+  # Department 18
+data_weather_18<-"data_weather_18"
+if(!file.exists(data_weather_18))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/0a7ed58e-4eed-4d43-a628-19ad45325e61", 
+                data_weather_18)
+weather_18 <- as.data.frame(str_split(read_lines(data_weather_18), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_18)<-weather_18[1,]
+weather_18<-weather_18[-1,]
+head(weather_18)
+
+  # Department 31
+data_weather_31<-"data_weather_31"
+if(!file.exists(data_weather_31))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/bf57de2c-9522-4e67-945b-0dc51be7d72e", 
+                data_weather_31)
+weather_31 <- as.data.frame(str_split(read_lines(data_weather_31), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_31)<-weather_31[1,]
+weather_31<-weather_31[-1,]
+head(weather_31)
+
+  # Department 54
+data_weather_54<-"data_weather_54"
+if(!file.exists(data_weather_54))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/7dedf80b-e289-4c70-ba9e-9db9710a6b98", 
+                data_weather_54)
+weather_54 <- as.data.frame(str_split(read_lines(data_weather_54), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_54)<-weather_54[1,]
+weather_54<-weather_54[-1,]
+head(weather_54)
+
+# Department 24
+data_weather_24<-"data_weather_24"
+if(!file.exists(data_weather_24))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/6c379955-df84-452e-a1a3-a3bfd802d50c", 
+                data_weather_24)
+weather_24 <- as.data.frame(str_split(read_lines(data_weather_24), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_24)<-weather_24[1,]
+weather_24<-weather_24[-1,]
+head(weather_24)
+
+  # Department 47
+data_weather_47<-"data_weather_47"
+if(!file.exists(data_weather_47))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/f7c8448f-f149-41ea-a430-fb1369d9f840", 
+                data_weather_47)
+weather_47 <- as.data.frame(str_split(read_lines(data_weather_47), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_47)<-weather_47[1,]
+weather_47<-weather_47[-1,]
+head(weather_47)
+
+# Department 30
+data_weather_30<-"data_weather_30"
+if(!file.exists(data_weather_30))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/4e2c626e-f423-4a55-80b8-9ed46591f3bb", 
+                data_weather_30)
+weather_30 <- as.data.frame(str_split(read_lines(data_weather_30), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_30)<-weather_30[1,]
+weather_30<-weather_30[-1,]
+head(weather_30)
+
+# Department 89
+data_weather_89<-"data_weather_89"
+if(!file.exists(data_weather_89))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/fb395f66-7fc4-4e61-8338-8b4b92bbe7fb", 
+                data_weather_89)
+weather_89 <- as.data.frame(str_split(read_lines(data_weather_89), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_89)<-weather_89[1,]
+weather_89<-weather_89[-1,]
+head(weather_89)
+
+# Department 58
+data_weather_58<-"data_weather_58"
+if(!file.exists(data_weather_58))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/9fa1eb19-9324-4b76-a05b-38dd101e5e43", 
+                data_weather_58)
+weather_58 <- as.data.frame(str_split(read_lines(data_weather_58), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_58)<-weather_58[1,]
+weather_58<-weather_58[-1,]
+head(weather_58)
+
+# Department 82
+data_weather_82<-"data_weather_82"
+if(!file.exists(data_weather_82))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/9d99980f-c8ff-4c40-98ae-3ea53e16ef2f", 
+                data_weather_82)
+weather_82 <- as.data.frame(str_split(read_lines(data_weather_82), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_82)<-weather_82[1,]
+weather_82<-weather_82[-1,]
+head(weather_82)
+
+# Department 81
+data_weather_81<-"data_weather_81"
+if(!file.exists(data_weather_81))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/c69b0670-ee2f-45c4-ba4f-02befb1372f4", 
+                data_weather_81)
+weather_81 <- as.data.frame(str_split(read_lines(data_weather_81), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_81)<-weather_81[1,]
+weather_81<-weather_81[-1,]
+head(weather_81)
+
+# Department 36
+data_weather_36<-"data_weather_36"
+if(!file.exists(data_weather_36))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/3d49013a-bad5-4dcb-868b-f683178ea9c1", 
+                data_weather_36)
+weather_36 <- as.data.frame(str_split(read_lines(data_weather_36), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_36)<-weather_36[1,]
+weather_36<-weather_36[-1,]
+head(weather_36)
+
+# Department 45
+data_weather_45<-"data_weather_45"
+if(!file.exists(data_weather_45))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/3b74c394-dd95-4d25-9074-4c326c78c394", 
+                data_weather_45)
+weather_45 <- as.data.frame(str_split(read_lines(data_weather_45), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_45)<-weather_45[1,]
+weather_45<-weather_45[-1,]
+head(weather_45)
+
+# Department 86
+data_weather_86<-"data_weather_86"
+if(!file.exists(data_weather_86))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/7b543b88-f333-4bef-a69a-93fb6e804a74", 
+                data_weather_86)
+weather_86 <- as.data.frame(str_split(read_lines(data_weather_86), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_86)<-weather_86[1,]
+weather_86<-weather_86[-1,]
+head(weather_86)
+
+# Department 39
+data_weather_39<-"data_weather_39"
+if(!file.exists(data_weather_39))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/5a543948-5db4-4f80-9785-562f28e1a915", 
+                data_weather_39)
+weather_39 <- as.data.frame(str_split(read_lines(data_weather_39), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_39)<-weather_39[1,]
+weather_39<-weather_39[-1,]
+head(weather_39)
+
+# Department 63
+data_weather_63<-"data_weather_63"
+if(!file.exists(data_weather_63))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/9d4a7d57-e070-4190-ad9f-ffd0e6ffc56c", 
+                data_weather_63)
+weather_63 <- as.data.frame(str_split(read_lines(data_weather_63), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_63)<-weather_63[1,]
+weather_63<-weather_63[-1,]
+head(weather_63)
+
+# Department 34
+data_weather_34<-"data_weather_34"
+if(!file.exists(data_weather_34))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/919b8590-1978-4dce-a9ea-c7afff813b7e", 
+                data_weather_34)
+weather_34 <- as.data.frame(str_split(read_lines(data_weather_34), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_34)<-weather_34[1,]
+weather_34<-weather_34[-1,]
+head(weather_34)
+
+# Department 21
+data_weather_21<-"data_weather_21"
+if(!file.exists(data_weather_21))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/91a5291f-1dfa-452a-aca2-dba12e2ea498", 
+                data_weather_21)
+weather_21 <- as.data.frame(str_split(read_lines(data_weather_21), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_21)<-weather_21[1,]
+weather_21<-weather_21[-1,]
+head(weather_21)
+
+# Department 17
+data_weather_17<-"data_weather_17"
+if(!file.exists(data_weather_17))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/beb7fa8d-2d5b-48b8-8e94-0a523c4bfaca", 
+                data_weather_17)
+weather_17 <- as.data.frame(str_split(read_lines(data_weather_17), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_17)<-weather_17[1,]
+weather_17<-weather_17[-1,]
+head(weather_17)
+
+# Department 77
+data_weather_77<-"data_weather_77"
+if(!file.exists(data_weather_77))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/a9fd6f79-943d-46e5-bfde-7400415a0cb6", 
+                data_weather_77)
+weather_77 <- as.data.frame(str_split(read_lines(data_weather_77), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_77)<-weather_77[1,]
+weather_77<-weather_77[-1,]
+head(weather_77)
+
+# Department 01
+data_weather_01<-"data_weather_01"
+if(!file.exists(data_weather_01))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/5c2d02bc-da05-434a-a274-ff4953f74e50", 
+                data_weather_01)
+weather_01 <- as.data.frame(str_split(read_lines(data_weather_01), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_01)<-weather_01[1,]
+weather_01<-weather_01[-1,]
+head(weather_01)
+
+# Department 25
+data_weather_25<-"data_weather_25"
+if(!file.exists(data_weather_25))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/7a1ae3eb-5e22-4bcc-8985-30863c80e201", 
+                data_weather_25)
+weather_25 <- as.data.frame(str_split(read_lines(data_weather_25), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_25)<-weather_25[1,]
+weather_25<-weather_25[-1,]
+head(weather_25)
+
+# Department 59
+data_weather_59<-"data_weather_59"
+if(!file.exists(data_weather_59))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/abd44bdb-bb62-4303-a9ec-4ee6ac33c509", 
+                data_weather_59)
+weather_59 <- as.data.frame(str_split(read_lines(data_weather_59), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_59)<-weather_59[1,]
+weather_59<-weather_59[-1,]
+head(weather_59)
+
+# Department 78
+data_weather_78<-"data_weather_78"
+if(!file.exists(data_weather_78))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/dc8d5252-3fb2-4324-bd0c-ad3b46d7a20b", 
+                data_weather_78)
+weather_78 <- as.data.frame(str_split(read_lines(data_weather_78), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_78)<-weather_78[1,]
+weather_78<-weather_78[-1,]
+head(weather_78)
+
+# Department 11
+data_weather_11<-"data_weather_11"
+if(!file.exists(data_weather_11))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/fcb4d0e2-e4e9-4a5c-8ee7-2882eea8499c", 
+                data_weather_11)
+weather_11 <- as.data.frame(str_split(read_lines(data_weather_11), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_11)<-weather_11[1,]
+weather_11<-weather_11[-1,]
+head(weather_11)
+
+# Department 07
+data_weather_07<-"data_weather_07"
+if(!file.exists(data_weather_07))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/58e849ef-60e4-4644-8372-bb4705764d2c", 
+                data_weather_07)
+weather_07 <- as.data.frame(str_split(read_lines(data_weather_07), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_07)<-weather_07[1,]
+weather_07<-weather_07[-1,]
+head(weather_07)
+
+# Department 79
+data_weather_79<-"data_weather_79"
+if(!file.exists(data_weather_79))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/9abf2a51-1fe8-44b3-abc4-0c1a9b5ae948", 
+                data_weather_79)
+weather_79 <- as.data.frame(str_split(read_lines(data_weather_79), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_79)<-weather_79[1,]
+weather_79<-weather_79[-1,]
+head(weather_79)
+
+# Department 37
+data_weather_37<-"data_weather_37"
+if(!file.exists(data_weather_37))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/9ea97d07-d63b-4807-aced-538bf6561389", 
+                data_weather_37)
+weather_37 <- as.data.frame(str_split(read_lines(data_weather_37), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_37)<-weather_37[1,]
+weather_37<-weather_37[-1,]
+head(weather_37)
+
+# Department 70
+data_weather_70<-"data_weather_70"
+if(!file.exists(data_weather_70))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/8e8d9c4e-40e4-45a9-9457-26d19ea75d1d", 
+                data_weather_70)
+weather_70 <- as.data.frame(str_split(read_lines(data_weather_70), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_70)<-weather_70[1,]
+weather_70<-weather_70[-1,]
+head(weather_70)
+
+# Department 84
+data_weather_84<-"data_weather_84"
+if(!file.exists(data_weather_84))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/11b4f6ca-71eb-4865-b0e8-2901c1e83295", 
+                data_weather_84)
+weather_84 <- as.data.frame(str_split(read_lines(data_weather_84), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_84)<-weather_84[1,]
+weather_84<-weather_84[-1,]
+head(weather_84)
+
+# Department 46
+data_weather_46<-"data_weather_46"
+if(!file.exists(data_weather_46))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/bc967ca2-79a9-4cfe-bd0f-1af7e21f5c0d", 
+                data_weather_46)
+weather_46 <- as.data.frame(str_split(read_lines(data_weather_46), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_46)<-weather_46[1,]
+weather_46<-weather_46[-1,]
+head(weather_46)
+
+# Department 85
+data_weather_85<-"data_weather_85"
+if(!file.exists(data_weather_85))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/01ec8cb3-c1fb-4e95-a607-37f801d1f1a3", 
+                data_weather_85)
+weather_85 <- as.data.frame(str_split(read_lines(data_weather_85), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_85)<-weather_85[1,]
+weather_85<-weather_85[-1,]
+head(weather_85)
+
+# Department 52
+data_weather_52<-"data_weather_52"
+if(!file.exists(data_weather_52))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/899d0d29-a01a-4402-924a-484f3b3d812d", 
+                data_weather_52)
+weather_52 <- as.data.frame(str_split(read_lines(data_weather_52), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_52)<-weather_52[1,]
+weather_52<-weather_52[-1,]
+head(weather_52)
+
+# Department 16
+data_weather_16<-"data_weather_16"
+if(!file.exists(data_weather_16))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/77612ac3-193f-43b6-9af7-86c043fdea0b", 
+                data_weather_16)
+weather_16 <- as.data.frame(str_split(read_lines(data_weather_16), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_16)<-weather_16[1,]
+weather_16<-weather_16[-1,]
+head(weather_16)
+
+# Department 69
+data_weather_69<-"data_weather_69"
+if(!file.exists(data_weather_69))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/69763121-ea02-43fd-9d20-73f6289b32ca", 
+                data_weather_69)
+weather_69 <- as.data.frame(str_split(read_lines(data_weather_69), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_69)<-weather_69[1,]
+weather_69<-weather_69[-1,]
+head(weather_69)
+
+# Department 19
+data_weather_19<-"data_weather_19"
+if(!file.exists(data_weather_19))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/ee6cedc3-3356-436c-a021-d1dc0e8d81eb", 
+                data_weather_19)
+weather_19 <- as.data.frame(str_split(read_lines(data_weather_19), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_19)<-weather_19[1,]
+weather_19<-weather_19[-1,]
+head(weather_19)
+
+# Department 83
+data_weather_83<-"data_weather_83"
+if(!file.exists(data_weather_83))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/7c614ae6-f619-4ee9-b9f2-94863c321d89", 
+                data_weather_83)
+weather_83 <- as.data.frame(str_split(read_lines(data_weather_83), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_83)<-weather_83[1,]
+weather_83<-weather_83[-1,]
+head(weather_83)
+
+# Department 55
+data_weather_55<-"data_weather_55"
+if(!file.exists(data_weather_55))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/5d7f248b-5248-41d1-969e-fd68aa915a4e", 
+                data_weather_55)
+weather_55 <- as.data.frame(str_split(read_lines(data_weather_55), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_55)<-weather_55[1,]
+weather_55<-weather_55[-1,]
+head(weather_55)
+
+# Department 41
+data_weather_41<-"data_weather_41"
+if(!file.exists(data_weather_41))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/7d446c9e-0886-48b8-a9c5-777f4fc188b7", 
+                data_weather_41)
+weather_41 <- as.data.frame(str_split(read_lines(data_weather_41), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_41)<-weather_41[1,]
+weather_41<-weather_41[-1,]
+head(weather_41)
+
+# Department 88
+data_weather_88<-"data_weather_88"
+if(!file.exists(data_weather_88))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/3db188e4-77e5-48c4-b7f0-fd575f9eef17", 
+                data_weather_88)
+weather_88 <- as.data.frame(str_split(read_lines(data_weather_88), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_88)<-weather_88[1,]
+weather_88<-weather_88[-1,]
+head(weather_88)
+
+# Department 10
+data_weather_10<-"data_weather_10"
+if(!file.exists(data_weather_10))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/46801f9e-56bb-4d0b-8b52-0c65a9fe5ff5", 
+                data_weather_10)
+weather_10 <- as.data.frame(str_split(read_lines(data_weather_10), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_10)<-weather_10[1,]
+weather_10<-weather_10[-1,]
+head(weather_10)
+
+# Department 26
+data_weather_26<-"data_weather_26"
+if(!file.exists(data_weather_26))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/c3f8f0fa-2467-4608-aad3-f10b09c6ba4d", 
+                data_weather_26)
+weather_26 <- as.data.frame(str_split(read_lines(data_weather_26), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_26)<-weather_26[1,]
+weather_26<-weather_26[-1,]
+head(weather_26)
+
+# Department 91
+data_weather_91<-"data_weather_91"
+if(!file.exists(data_weather_91))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/de0307ec-473c-4ec8-b68e-fe38c886ec96", 
+                data_weather_91)
+weather_91 <- as.data.frame(str_split(read_lines(data_weather_91), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_91)<-weather_91[1,]
+weather_91<-weather_91[-1,]
+head(weather_91)
+
+# Department 13
+data_weather_13<-"data_weather_13"
+if(!file.exists(data_weather_13))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/acb2c523-fd78-478e-bb82-ef48da5ee0e4", 
+                data_weather_13)
+weather_13 <- as.data.frame(str_split(read_lines(data_weather_13), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_13)<-weather_13[1,]
+weather_13<-weather_13[-1,]
+head(weather_13)
+
+# Department 42
+data_weather_42<-"data_weather_42"
+if(!file.exists(data_weather_42))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/1cdee506-b71e-4cdf-a3db-e4149f69d37b", 
+                data_weather_42)
+weather_42 <- as.data.frame(str_split(read_lines(data_weather_42), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_42)<-weather_42[1,]
+weather_42<-weather_42[-1,]
+head(weather_42)
+
+# Department 28
+data_weather_28<-"data_weather_28"
+if(!file.exists(data_weather_28))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/e43b96ce-d984-42a6-bcec-651d7911668d", 
+                data_weather_28)
+weather_28 <- as.data.frame(str_split(read_lines(data_weather_28), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_28)<-weather_28[1,]
+weather_28<-weather_28[-1,]
+head(weather_28)
+
+# Department 67
+data_weather_67<-"data_weather_67"
+if(!file.exists(data_weather_67))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/835f188e-dd7d-4fa3-b8d2-f8cea313d9ce", 
+                data_weather_67)
+weather_67 <- as.data.frame(str_split(read_lines(data_weather_67), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_67)<-weather_67[1,]
+weather_67<-weather_67[-1,]
+head(weather_67)
+
+# Department 72
+data_weather_72<-"data_weather_72"
+if(!file.exists(data_weather_72))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/70d3eb89-8957-477e-be45-15c772d51c5e", 
+                data_weather_72)
+weather_72 <- as.data.frame(str_split(read_lines(data_weather_72), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_72)<-weather_72[1,]
+weather_72<-weather_72[-1,]
+head(weather_72)
+
+# Department 04
+data_weather_04<-"data_weather_04"
+if(!file.exists(data_weather_04))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/881ac0db-e8d0-4f62-a185-9fd33d5d5819", 
+                data_weather_04)
+weather_04 <- as.data.frame(str_split(read_lines(data_weather_04), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_04)<-weather_04[1,]
+weather_04<-weather_04[-1,]
+head(weather_04)
+
+# Department 90
+data_weather_90<-"data_weather_90"
+if(!file.exists(data_weather_90))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/fd108f8f-b378-4869-9922-7df0752b7ebc", 
+                data_weather_90)
+weather_90 <- as.data.frame(str_split(read_lines(data_weather_90), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_90)<-weather_90[1,]
+weather_90<-weather_90[-1,]
+head(weather_90)
+
+# Department 51
+data_weather_51<-"data_weather_51"
+if(!file.exists(data_weather_51))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/996dd266-f2b9-46e4-9b73-4645fb8af4ae", 
+                data_weather_51)
+weather_51 <- as.data.frame(str_split(read_lines(data_weather_51), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_51)<-weather_51[1,]
+weather_51<-weather_51[-1,]
+head(weather_51)
+
+# Department 02
+data_weather_02<-"data_weather_02"
+if(!file.exists(data_weather_02))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/c4dc2289-2451-482c-a566-857ab34165a7", 
+                data_weather_02)
+weather_02 <- as.data.frame(str_split(read_lines(data_weather_02), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_02)<-weather_02[1,]
+weather_02<-weather_02[-1,]
+head(weather_02)
+
+# Department 38
+data_weather_38<-"data_weather_38"
+if(!file.exists(data_weather_38))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/09d25a36-2e11-4f0b-b52b-4898ba53760c", 
+                data_weather_38)
+weather_38 <- as.data.frame(str_split(read_lines(data_weather_38), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_38)<-weather_38[1,]
+weather_38<-weather_38[-1,]
+head(weather_38)
+
+# Department 62
+data_weather_62<-"data_weather_62"
+if(!file.exists(data_weather_62))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/9390b932-f6a6-46b5-8e4d-3e5d52cfdde6", 
+                data_weather_62)
+weather_62 <- as.data.frame(str_split(read_lines(data_weather_62), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_62)<-weather_62[1,]
+weather_62<-weather_62[-1,]
+head(weather_62)
+
+# Department 08
+data_weather_08<-"data_weather_08"
+if(!file.exists(data_weather_08))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/ddacc3d1-8612-4901-91b9-182e0e3c7d53", 
+                data_weather_08)
+weather_08 <- as.data.frame(str_split(read_lines(data_weather_08), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_08)<-weather_08[1,]
+weather_08<-weather_08[-1,]
+head(weather_08)
+
+# Department 93
+data_weather_93<-"data_weather_93"
+if(!file.exists(data_weather_93))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/380d04b0-3bcf-415a-8b68-702b93266588", 
+                data_weather_93)
+weather_93 <- as.data.frame(str_split(read_lines(data_weather_93), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_93)<-weather_93[1,]
+weather_93<-weather_93[-1,]
+head(weather_93)
+
+# Department 61
+data_weather_61<-"data_weather_61"
+if(!file.exists(data_weather_61))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/71589a5e-c71c-455f-a9f0-80a472730001", 
+                data_weather_61)
+weather_61 <- as.data.frame(str_split(read_lines(data_weather_61), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_61)<-weather_61[1,]
+weather_61<-weather_61[-1,]
+head(weather_61)
+
+# Department 12
+data_weather_12<-"data_weather_12"
+if(!file.exists(data_weather_12))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/0e0a5da6-ff55-48d9-8495-3267826c81d0", 
+                data_weather_12)
+weather_12 <- as.data.frame(str_split(read_lines(data_weather_12), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_12)<-weather_12[1,]
+weather_12<-weather_12[-1,]
+head(weather_12)
+
+# Department 95
+data_weather_95<-"data_weather_95"
+if(!file.exists(data_weather_95))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/b3dbeaaa-b24e-4ab5-a466-0496d2523acb", 
+                data_weather_95)
+weather_95 <- as.data.frame(str_split(read_lines(data_weather_95), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_95)<-weather_95[1,]
+weather_95<-weather_95[-1,]
+head(weather_95)
+
+# Department 64
+data_weather_64<-"data_weather_64"
+if(!file.exists(data_weather_64))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/4ec2f558-199e-427c-8fcd-63bd199b510b", 
+                data_weather_64)
+weather_64 <- as.data.frame(str_split(read_lines(data_weather_64), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_64)<-weather_64[1,]
+weather_64<-weather_64[-1,]
+head(weather_64)
+
+# Department 09
+data_weather_09<-"data_weather_09"
+if(!file.exists(data_weather_09))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/dc70bf86-70a4-47e2-aa05-a48fed688eee", 
+                data_weather_09)
+weather_09 <- as.data.frame(str_split(read_lines(data_weather_09), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_09)<-weather_09[1,]
+weather_09<-weather_09[-1,]
+head(weather_09)
+
+# Department 27
+data_weather_27<-"data_weather_27"
+if(!file.exists(data_weather_27))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/44d1dd0f-b5a3-4a33-9363-8e9cc0dc463c", 
+                data_weather_27)
+weather_27 <- as.data.frame(str_split(read_lines(data_weather_27), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_27)<-weather_27[1,]
+weather_27<-weather_27[-1,]
+head(weather_27)
+
+# Department 74
+data_weather_74<-"data_weather_74"
+if(!file.exists(data_weather_74))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/f7e77d52-1496-4761-b395-288793e63155", 
+                data_weather_74)
+weather_74 <- as.data.frame(str_split(read_lines(data_weather_74), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_74)<-weather_74[1,]
+weather_74<-weather_74[-1,]
+head(weather_74)
+
+# Department 49
+data_weather_49<-"data_weather_49"
+if(!file.exists(data_weather_49))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/cde858b2-d407-41f9-a786-1d0860ab45ea", 
+                data_weather_49)
+weather_49 <- as.data.frame(str_split(read_lines(data_weather_49), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_49)<-weather_49[1,]
+weather_49<-weather_49[-1,]
+head(weather_49)
+
+# Department 94
+data_weather_94<-"data_weather_94"
+if(!file.exists(data_weather_94))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/7bb301d4-c304-4157-bb49-af8603f7cf2f", 
+                data_weather_94)
+weather_94 <- as.data.frame(str_split(read_lines(data_weather_94), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_94)<-weather_94[1,]
+weather_94<-weather_94[-1,]
+head(weather_94)
+
+# Department 92
+data_weather_92<-"data_weather_92"
+
+if(!file.exists(data_weather_92))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/a8a7802b-4a1f-44ef-aabf-bd9f41ecba13", 
+                data_weather_92)
+weather_92 <- as.data.frame(str_split(read_lines(data_weather_92), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_92)<-weather_92[1,]
+weather_92<-weather_92[-1,]
+head(weather_92)
+
+# Department 23
+data_weather_23<-"data_weather_23"
+if(!file.exists(data_weather_23))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/14e1b3ca-8923-4df5-aafb-4f00e83d84a2", 
+                data_weather_23)
+weather_23 <- as.data.frame(str_split(read_lines(data_weather_23), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_23)<-weather_23[1,]
+weather_23<-weather_23[-1,]
+head(weather_23)
+
+# Department 87
+data_weather_87<-"data_weather_87"
+if(!file.exists(data_weather_87))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/fc9d9092-ca1d-455a-b365-5c525f3979f6", 
+                data_weather_87)
+weather_87 <- as.data.frame(str_split(read_lines(data_weather_87), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_87)<-weather_87[1,]
+weather_87<-weather_87[-1,]
+head(weather_87)
+
+# Department 15
+data_weather_15<-"data_weather_15"
+if(!file.exists(data_weather_15))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/8ae6f25d-95f9-4527-8b22-2fc8335cd7ef", 
+                data_weather_15)
+weather_15 <- as.data.frame(str_split(read_lines(data_weather_15), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_15)<-weather_15[1,]
+weather_15<-weather_15[-1,]
+head(weather_15)
+
+# Department 06
+data_weather_06<-"data_weather_06"
+if(!file.exists(data_weather_06))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/21ab9616-ccd7-4812-925e-1bf9c38511df", 
+                data_weather_06)
+weather_06 <- as.data.frame(str_split(read_lines(data_weather_06), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_06)<-weather_06[1,]
+weather_06<-weather_06[-1,]
+head(weather_06)
+
+# Department 43
+data_weather_43<-"data_weather_43"
+if(!file.exists(data_weather_43))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/674a1ef5-9b4d-46b7-9a3b-599215548d42", 
+                data_weather_43)
+weather_43 <- as.data.frame(str_split(read_lines(data_weather_43), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_43)<-weather_43[1,]
+weather_43<-weather_43[-1,]
+head(weather_43)
+
+# Department 60
+data_weather_60<-"data_weather_60"
+if(!file.exists(data_weather_60))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/f1bd9df7-7e29-4e4e-b2eb-84b5ef973a77", 
+                data_weather_60)
+weather_60 <- as.data.frame(str_split(read_lines(data_weather_60), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_60)<-weather_60[1,]
+weather_60<-weather_60[-1,]
+head(weather_60)
+
+# Department 40
+data_weather_40<-"data_weather_40"
+if(!file.exists(data_weather_40))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/e7075a7b-119b-4770-a033-a8227208838a", 
+                data_weather_40)
+weather_40 <- as.data.frame(str_split(read_lines(data_weather_40), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_40)<-weather_40[1,]
+weather_40<-weather_40[-1,]
+head(weather_40)
+
+# Department 14
+data_weather_14<-"data_weather_14"
+if(!file.exists(data_weather_14))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/99789b67-a2fc-462f-a49a-12ff6de892c0", 
+                data_weather_14)
+weather_14 <- as.data.frame(str_split(read_lines(data_weather_14), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_14)<-weather_14[1,]
+weather_14<-weather_14[-1,]
+head(weather_14)
+
+# Department 44
+data_weather_44<-"data_weather_44"
+if(!file.exists(data_weather_44))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/e3996aef-e498-419a-ac17-e82a9a358969", 
+                data_weather_44)
+weather_44 <- as.data.frame(str_split(read_lines(data_weather_44), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_44)<-weather_44[1,]
+weather_44<-weather_44[-1,]
+head(weather_44)
+
+# Department 73
+data_weather_73<-"data_weather_73"
+if(!file.exists(data_weather_73))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/efb41cfc-163f-4a0b-ac05-5b943b09b51b", 
+                data_weather_73)
+weather_73 <- as.data.frame(str_split(read_lines(data_weather_73), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_73)<-weather_73[1,]
+weather_73<-weather_73[-1,]
+head(weather_73)
+
+# Department 65
+data_weather_65<-"data_weather_65"
+if(!file.exists(data_weather_65))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/f514a43f-c3e2-4637-b90e-f50f1b754e87", 
+                data_weather_65)
+weather_65 <- as.data.frame(str_split(read_lines(data_weather_65), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_65)<-weather_65[1,]
+weather_65<-weather_65[-1,]
+head(weather_65)
+
+# Department 68
+data_weather_68<-"data_weather_68"
+if(!file.exists(data_weather_68))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/240cb5d3-2a94-47c8-a991-9537e0d29c36", 
+                data_weather_68)
+weather_68 <- as.data.frame(str_split(read_lines(data_weather_68), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_68)<-weather_68[1,]
+weather_68<-weather_68[-1,]
+head(weather_68)
+
+# Department 76
+data_weather_76<-"data_weather_76"
+if(!file.exists(data_weather_76))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/0963b32e-e30e-4696-b5b3-984ac99108a8", 
+                data_weather_76)
+weather_76 <- as.data.frame(str_split(read_lines(data_weather_76), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_76)<-weather_76[1,]
+weather_76<-weather_76[-1,]
+head(weather_76)
+
+# Department 05
+data_weather_05<-"data_weather_05"
+if(!file.exists(data_weather_05))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/16014ec2-cd93-415e-a3b5-c2f868dfbee2", 
+                data_weather_05)
+weather_05 <- as.data.frame(str_split(read_lines(data_weather_05), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_05)<-weather_05[1,]
+weather_05<-weather_05[-1,]
+head(weather_05)
+
+# Department 66
+data_weather_66<-"data_weather_66"
+if(!file.exists(data_weather_66))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/d7162cfc-0ff1-41be-8603-579afdef2c2b", 
+                data_weather_66)
+weather_66 <- as.data.frame(str_split(read_lines(data_weather_66), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_66)<-weather_66[1,]
+weather_66<-weather_66[-1,]
+head(weather_66)
+
+# Department 80
+data_weather_80<-"data_weather_80"
+if(!file.exists(data_weather_80))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/57adb05c-a8ef-4d20-9ee1-06fe533dc4ab", 
+                data_weather_80)
+weather_80 <- as.data.frame(str_split(read_lines(data_weather_80), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_80)<-weather_80[1,]
+weather_80<-weather_80[-1,]
+head(weather_80)
+
+# Department 48
+data_weather_48<-"data_weather_48"
+if(!file.exists(data_weather_48))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/842f4781-5879-4733-83d6-439a4dab43f4", 
+                data_weather_48)
+weather_48 <- as.data.frame(str_split(read_lines(data_weather_48), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_48)<-weather_48[1,]
+weather_48<-weather_48[-1,]
+head(weather_48)
+
+# Department 50
+data_weather_50<-"data_weather_50"
+if(!file.exists(data_weather_50))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/289e958a-d465-4e4b-847c-cb39a79d5248", 
+                data_weather_50)
+weather_50 <- as.data.frame(str_split(read_lines(data_weather_50), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_50)<-weather_50[1,]
+weather_50<-weather_50[-1,]
+head(weather_50)
+
+# Department 35
+data_weather_35<-"data_weather_35"
+if(!file.exists(data_weather_35))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/32557dab-ec18-408c-9c42-eab34053c037", 
+                data_weather_35)
+weather_35 <- as.data.frame(str_split(read_lines(data_weather_35), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_35)<-weather_35[1,]
+weather_35<-weather_35[-1,]
+head(weather_35)
+
+# Department 53
+data_weather_53<-"data_weather_53"
+if(!file.exists(data_weather_53))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/c9d8b80d-8ad4-44c7-9323-24af611fbf26", 
+                data_weather_53)
+weather_53 <- as.data.frame(str_split(read_lines(data_weather_53), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_53)<-weather_53[1,]
+weather_53<-weather_53[-1,]
+head(weather_53)
+
+# Department 56
+data_weather_56<-"data_weather_56"
+if(!file.exists(data_weather_56))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/a5289efa-506f-48b0-8462-463efde6ca45", 
+                data_weather_56)
+weather_56 <- as.data.frame(str_split(read_lines(data_weather_56), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_56)<-weather_56[1,]
+weather_56<-weather_56[-1,]
+head(weather_56)
+
+# Department 22
+data_weather_22<-"data_weather_22"
+if(!file.exists(data_weather_22))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/422893ab-2583-4d52-9aff-e779c68f5cf7", 
+                data_weather_22)
+weather_22 <- as.data.frame(str_split(read_lines(data_weather_22), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_22)<-weather_22[1,]
+weather_22<-weather_22[-1,]
+head(weather_22)
+
+# Department 29
+data_weather_29<-"data_weather_29"
+if(!file.exists(data_weather_29))
+  download.file("https://www.data.gouv.fr/fr/datasets/r/7d1a8c4d-c4e9-4aef-87f9-b8364828e6a2", 
+                data_weather_29)
+weather_29 <- as.data.frame(str_split(read_lines(data_weather_29), fixed(";"), simplify = TRUE),
+                            stringsAsFactors = FALSE)
+colnames(weather_29)<-weather_29[1,]
+weather_29<-weather_29[-1,]
+head(weather_29)
+
+
+# Joining all departments in one dataframe
+weather_list<-mget(ls(pattern = "^weather_\\d{2}$")) # Selecting and creating a list of all objects "weather_.."
+weather<-bind_rows(weather_list) # Joining all weather objects
+head(weather)
+# Keeping only interesting columns and renaming them
+weather<-weather%>%select(NUM_POSTE,
+                                LAT,
+                                LON,
+                                ALTI,
+                                AAAAMM,
+                                RR,
+                                QRR,
+                                NBRR,
+                                NBJRR1,
+                                NBJRR5,
+                                NBJRR10,
+                                NBJRR30,
+                                NBJRR50,
+                                NBJRR100,
+                                TX,
+                                QTX,
+                          TMM,
+                          QTMM,
+                                NBTX,
+                                NBJTX0,
+                                NBJTX25,
+                                NBJTX30,
+                                NBJTX35,
+                          NBJTXI20,
+                          NBJTXI27,
+                          NBJTXS32,
+                                TN,
+                                QTN,
+                                NBTN,
+                                NBJTN5,
+                                NBJTN10,
+                                UMM,
+                          QUMM,
+                          UNAB,
+                          QUNAB,
+                          UXAB,
+                          QUXAB,
+                          TSVM,
+                          QTSVM,
+                          ETP,
+                          QETP,
+                          GLOT,
+                          QGLOT
+                          )
+
+# Here is the column detail : 
+# -> RR = cumulative monthly precipitation
+# -> QRR = quality of precipitation measurement.
+# -> NBRR = number of days with precipitation
+# -> NBJRR1 = Number of days with precipitation of 1 mm
+# -> NBJRR5 = Number of days with precipitation of 5 mm
+# -> NBJRR10 = Number of days with precipitation of 10 mm
+# -> NBJRR30 = Number of days with precipitation of 30 mm
+# -> NBJRR50 = Number of days with precipitation of 50 mm
+# -> NBJRR100 = Number of days with precipitation of 100 mm
+# -> TX = Average maximum temperature of the month (in °C)
+# -> QTX = Quality of maximum temperature measurement.
+# -> NBTX = Number of days with a maximum temperature measurement.
+# -> NBJTX0 = Number of days with maximum temperatures under or equal to 0°C
+# -> NBJTX25 = Number of days with maximum temperatures exceeding 25°C
+# -> NBJTX30 =  Number of days with maximum temperatures exceeding 30°C
+# -> NBJTX35 =  Number of days with maximum temperatures exceeding 35°C
+# -> NBJTXI20 = Number of days with maximum temperatures under or equal to 20°C
+# -> NBJTXI27 = Number of days with maximum temperatures under or equal to 27°C
+# -> NBJTXS32 = Number of days with maximum temperatures exceeding 32°C
+# -> TN = Average minimum temperature of the month (in °C)
+# -> QTN = Quality of minimum temperature measurement.
+# -> NBTN = Number of days with a minimum temperature measurement.
+# -> NBJTN5 = Number of days with minimum temperatures below -5°C
+# -> NBJTN10 = Number of days with minimum temperatures below -10°C
+# -> UMM = Monthly average of daily average humidity (UM) (in %)
+# -> QUMM = Quality of UMM measurement.
+# -> UNAB = Absolute monthly minimum of daily minimum relative humidity (UN) (in %)
+# -> QUNAB = Quality of UNAB measurement 
+# -> UXAB = Absolute monthly maximum of daily maximum relative humidity (UX) (in %)
+# -> QUXAB = Quality of UXAB measurement 
+# -> TSVM = Monthly average of vapor pressure (in hPa and 1/10)
+# -> QTSVM = Quality of QTSVM measurement 
+# -> ETP = ETP: sum of decadal Penman ETPs (potential evapotranspiration) (in mm and 1/10)
+# -> QETP = Quality of ETP measurement.
+# -> GLOT = Monthly cumulative daily global radiation (in J/cm2)
+# -> QGLOT = Quality of GLOT measurement.
+colnames(weather)<-c("NUM_POSTE",
+                                "latitude",
+                                "longitude",
+                                "altitude",
+                                "Year_Month",
+                                "RR",
+                                "QRR",
+                                "NBRR",
+                                "NBJRR1",
+                                "NBJRR5",
+                                "NBJRR10",
+                                "NBJRR30",
+                                "NBJRR50",
+                                "NBJRR100",
+                                "TX",
+                                "QTX",
+                     "TMM",
+                     "QTMM",
+                                "NBTX",
+                                "NBJTX0",
+                                "NBJTX25",
+                                "NBJTX30",
+                                "NBJTX35",
+                     "NBJTXI20",
+                     "NBJTXI27",
+                     "NBJTXS32",
+                                "TN",
+                                "QTN",
+                                "NBTN",
+                                "NBJTN5",
+                                "NBJTN10",
+                     "UMM",
+                     "QUMM",
+                     "UNAB",
+                     "QUNAB",
+                     "UXAB",
+                     "QUXAB",
+                     "TSVM",
+                     "QTSVM",
+                     "ETP",
+                     "QETP",
+                     "GLOT",
+                     "QGLOT"
+                     )
+
+
+# We remove the duplicates to avoid any errors.
+weather<-weather[!duplicated(weather[c("NUM_POSTE", "Year_Month")]), ]
+
+# Creating columns for "year" and "month"
+weather<-weather%>%
+  mutate(year=substr(weather$Year_Month,1,4),
+         month=substr(weather$Year_Month,5,6))%>%
+           select(-Year_Month)
+weather<-weather%>%
+  mutate(year=as.numeric(year),
+         month=as.numeric(month))
+# We see that the period covered by our weather dataframe is much bigger than 
+# in our main dataframe, so we will filter on the period to study.
+weather<-weather%>%
+  filter(year>2004&year<2021)
+
+# Matching each city from "df", to the closest post from "weather"
+# To calculate the distance between 2 gps points we will use the Harvesine formula as following:  
+# distance(km)<-6371*2*asin(sqrt(sin((Lat2-Lat1)*pi/180/2)^2+cos(Lat1*pi/180)
+#               *cos(Lat2*pi/180)*sin((Long2-Long1)*pi/180/2)^2))
+
+# Are the weather post working every year ?
+weather%>%
+  filter(NUM_POSTE==weather[10112,1])%>%
+  group_by(year)%>%summarise()
+# For example we see that the 10112th Post of our dataframe has been only working from 2005 to 2012.
+# If we want to match cities with the closest weather post, we will so need to take in consideration the year concerned.
+unique_cities_year_df <- df %>%
+  filter(year>2004&year<2021,
+         insee_code%in%cities_gps$insee_code)%>%
+  distinct(insee_code,year) %>%
+  left_join(cities_gps,by="insee_code",relationship = "many-to-many") %>%
+  select(insee_code,year,latitude,longitude)%>%
+  mutate(latitude=as.numeric(latitude),
+       longitude=as.numeric(longitude))
+
+unique_poste_weather<-weather%>%
+  filter(year>2004&year<2021)%>%
+  distinct(NUM_POSTE,year,longitude,latitude)%>%
+  mutate(latitude=as.numeric(latitude),
+         longitude=as.numeric(longitude))
+
+# Let’s check on a 2D map of France,
+# whether we have successfully retrieved all the weather stations in mainland France
+leaflet(data = unique_poste_weather%>%
+          filter(year==2020)) %>%
+  addTiles() %>%  # OpenStreetMap basemap
+  addCircleMarkers(
+    lng = ~as.numeric(longitude),
+    lat = ~as.numeric(latitude),
+    radius = 3.5, # Defining circle markers sizes
+    fillOpacity = 0.6, # Adjustment of cicrels markers transparency
+    stroke = FALSE # Disable the border around the circles to make it more readable
+  )
+# The map shows good data coverage
+
+
+# Matching the closest weather station for each city/year. 
+# (/!\ This line of code take around 2 minutes to run)
+nearest_poste<-map_df(unique(unique_cities_year_df$year),function(a){
+  unique_cities_year_df<-unique_cities_year_df%>%filter(year==a)
+  unique_poste_weather<-unique_poste_weather%>%filter(year==a)
+  distances_matrix <- geodist(
+    unique_cities_year_df[, c("longitude", "latitude")],
+    unique_poste_weather[, c("longitude", "latitude")],
+    measure = "haversine"
+  ) / 1000
+  
+  unique_cities_year_df%>%
+    mutate(NUM_POSTE=unique_poste_weather[apply(distances_matrix,1,which.min),1],
+           distance_km=apply(distances_matrix,1,min))
+})
+
+# Creatin our dataframe (df1) by adding the nearest weather station to df. 
+nearest_poste<-nearest_poste%>%select(-latitude,-longitude)
+df1<-df%>%inner_join(nearest_poste,
+                    by=c("insee_code","year"),
+                    relationship = "many-to-many")
+
+# Wrangling "weather" dataframe to integrate it in the main dataframe "df"
+# Transforming all predictors as numeric to facilitate the treatment
+weather<-weather%>%
+  mutate_at(2:ncol(weather), as.numeric)%>%
+  mutate_at(1,as.character)
+
+# The quality of the measurement is evaluated as following:
+# 9: filtered data (the data has passed the first level filters/checks)
+# 0: protected data (the data has been definitively validated by the climatologist)
+# 1: validated data (the data has been validated by automatic check or by the climatologist)
+# 2: doubtful data in the process of being verified (the data has been called into question by automatic check)
+#    You can find further information on the following link : https://donneespubliques.meteofrance.fr/client/document/mensq_descriptif_champs_323.csv
+
+# To facilitate the readability we will change the notation as following
+# 0 (ex 0): protected data (the data has been definitively validated by the climatologist)
+# 1 (ex 1): validated data (the data has been validated by automatic check or by the climatologist)
+# 2 (ex 9): filtered data (the data has passed the first level filters/checks)
+# 3 : unmeasured quality (NA)
+# 4 (ex 2): doubtful data in the process of being verified (the data has been called into question by automatic check)
+
+weather1<-weather%>%
+  mutate(QRR=ifelse(QRR==2,4,ifelse(QRR==9,2,QRR)),
+         QTX=ifelse(QTX==2,4,ifelse(QTX==9,2,QTX)),
+         QTN=ifelse(QTN==2,4,ifelse(QTN==9,2,QTN)),
+         QTMM=ifelse(QTMM==2,4,ifelse(QTMM==9,2,QTMM)),
+         QUMM=ifelse(QUMM==2,4,ifelse(QUMM==9,2,QUMM)),
+         QUNAB=ifelse(QUNAB==2,4,ifelse(QUNAB==9,2,QUNAB)),
+         QUXAB=ifelse(QUXAB==2,4,ifelse(QUXAB==9,2,QUXAB)),
+         QTSVM=ifelse(QTSVM==2,4,ifelse(QTSVM==9,2,QTSVM)),
+         QETP=ifelse(QETP==2,4,ifelse(QETP==9,2,QETP)),
+         QGLOT=ifelse(QGLOT==2,4,ifelse(QGLOT==9,2,QGLOT)))
+weather1$QRR[is.na(weather$QRR)]<-3
+weather1$QTX[is.na(weather$QTX)]<-3
+weather1$QTN[is.na(weather$QTN)]<-3
+weather1$QTMM[is.na(weather$QTMM)]<-3
+weather1$QUMM[is.na(weather$QUMM)]<-3
+weather1$QUNAB[is.na(weather$QUNAB)]<-3
+weather1$QUXAB[is.na(weather$QUXAB)]<-3
+weather1$QTSVM[is.na(weather$QTSVM)]<-3
+weather1$QETP[is.na(weather$QETP)]<-3
+weather1$QGLOT[is.na(weather$QGLOT)]<-3
+
+# Grouping data per years 
+weather_year<-weather1%>%group_by(NUM_POSTE,year)%>%
+  summarise(
+    cumul_precipit=sum(RR),
+    qlty_precipit=mean(QRR,na.rm=TRUE),
+   n_day_1mm_precipit=sum(NBJRR1,na.rm=TRUE),
+   n_day_5mm_precipit=sum(NBJRR5,na.rm=TRUE),
+   n_day_10mm_precipit =sum(NBJRR10,na.rm=TRUE),
+   n_day_30mm_precipit=sum(NBJRR30,na.rm=TRUE),
+   n_day_50mm_precipit=sum(NBJRR50,na.rm=TRUE),
+   n_day_100mm_precipit=sum(NBJRR100,na.rm=TRUE),
+   mean_temp=mean(TMM,na.rm=TRUE),       
+    qlty_mean_temp=mean(QTMM,na.rm=TRUE),
+   n_day_below_0 =sum(NBJTX0,na.rm=TRUE),
+   n_day_above_25 =sum(NBJTX25,na.rm=TRUE),
+   n_day_above_30=sum(NBJTX30,na.rm=TRUE),
+   n_day_above_35=sum(NBJTX35,na.rm=TRUE),
+   n_day_below_5=sum(NBJTN5,na.rm=TRUE),
+   n_day_below_10 =sum(NBJTN10,na.rm=TRUE),
+   n_day_below_20=sum(NBJTXI20,na.rm=TRUE),
+   n_day_below_27=sum(NBJTXI27,na.rm=TRUE),
+   n_day_above_32=sum(NBJTXS32,na.rm=TRUE),
+   mean_temp_spring=mean(TMM[month%in%c(03,04,05)],na.rm=TRUE),
+   mean_temp_summer=mean(TMM[month%in%c(06,07,08)],na.rm=TRUE),
+   mean_temp_autumn=mean(TMM[month%in%c(09,10,11)],na.rm=TRUE),
+   mean_temp_winter=mean(TMM[month%in%c(12,01,02)],na.rm=TRUE),
+  mean_humid=mean(UMM,na.rm=TRUE),       
+  qlty_mean_humid=mean(QUMM,na.rm=TRUE),
+  mean_min_humid=mean(UNAB,na.rm=TRUE),       
+  qlty_mean_min_humid=mean(QUNAB,na.rm=TRUE),       
+  mean_max_humid=mean(UXAB,na.rm=TRUE),       
+  qlty_mean_max_humid=mean(QUXAB,na.rm=TRUE),       
+  mean_vap_press=mean(TSVM,na.rm=TRUE),       
+  qlty_mean_vap_press=mean(QTSVM,na.rm=TRUE),
+  mean_ET=mean(ETP,na.rm=TRUE),       
+  qlty_mean_ET=mean(QETP,na.rm=TRUE),
+  mean_radiation=mean(GLOT,na.rm=TRUE),       
+  qlty_mean_radiation=mean(QGLOT,na.rm=TRUE)
+  )
+
+## Importing every year population size for each city
+#####################################################
+dat_pop_size<-"dat_pop_size"
+if(!file.exists(dat_pop_size))
+  download.file("https://www.insee.fr/fr/statistiques/fichier/3698339/base-pop-historiques-1876-2022.xlsx", 
+                dat_pop_size)
+
+pop_size<-read_excel("dat_pop_size", sheet = 1)
+pop_size<-pop_size[5:34943,1:21]
+colnames(pop_size)<-pop_size[1,]
+pop_size<-pop_size[-1,]
+colnames(pop_size)
+colnames(pop_size)<-c("insee_code","REG","DEP","LIBGEO","2022","2021","2020","2019","2018","2017",
+  "2016","2015","2014","2013","2012","2011","2010","2009","2008","2007","2006")
+pop_size<-pop_size%>%select(-REG,-DEP,-LIBGEO)
+head(pop_size)
+pop_size<-gather(pop_size,"year","population",-insee_code)%>%
+  mutate_at(2,as.numeric)
+head(pop_size)
+
+# Preparing cities informations 
+colnames(cities_gps)
+cities_names<-cities_gps%>%
+  select(insee_code,
+         city_code,
+         zip_code,
+         department_name,
+         department_number,
+         region_name,
+         latitude,
+         longitude)
+head(cities_names)
+
+## Importing "Mapping of the exposure of individual houses to clay movements" dataset 
+##################################################################################
+houses_exposure<-"houses_exposure"
+if(!file.exists(houses_exposure))
+  download.file("https://www.statistiques.developpement-durable.gouv.fr/media/4553/download?inline", 
+                houses_exposure)
+
+houses_exposure<-read_excel("houses_exposure", sheet = 2)
+head(houses_exposure)
+colnames(houses_exposure)
+# We will only keep the latest data (updated in 2019) as following : 
+houses_exposure<-houses_exposure%>%select(insee_com,
+                         nb_logement,
+                         nb_logement_alea_faible,
+                         nb_logement_alea_moyen_fort,
+                         surface_commune,
+                         part_alea_faible_commune,
+                         part_alea_moyen_fort_commune)
+# Renaming and translating columns names 
+colnames(houses_exposure)<-c("insee_code",
+                             "n_houses",
+                             "n_low_risk_houses",
+                             "n_high_risk_houses",
+                             "city_area",
+                             "percent_low_risk_city_area",
+                             "percent_high_risk_city_area")
+
+# Creating new predictors 
+houses_exposure<-houses_exposure%>%mutate(n_houses_risk=(n_low_risk_houses+n_high_risk_houses),
+                         percent_low_risk_houses=(n_low_risk_houses/n_houses)*100,
+                         percent_high_risk_houses=(n_high_risk_houses/n_houses)*100,
+                         percent_houses_risk=(n_houses_risk/n_houses)*100)
+# Transforming values into digital data
+houses_exposure<-houses_exposure%>%
+  mutate_at(2:ncol(houses_exposure), as.numeric)
+str(houses_exposure)
+
+## Importing "Typology of the vulnerability of municipalities to climate risks" dataset 
+####################################################################################
+risks_exposure<-"risks_exposure"
+if(!file.exists(risks_exposure))
+  download.file("https://www.statistiques.developpement-durable.gouv.fr/media/3514/download?inline", 
+                risks_exposure)
+
+risks_exposure<-read_excel("risks_exposure", sheet = 2)
+head(risks_exposure)
+colnames(risks_exposure)
+# Filtering on the data wee need (updated in 2016) as following : 
+risks_exposure<-risks_exposure%>%select(codgeo,
+                                        exp_atm,
+                                        exp_ino,
+                                        exp_mvt,
+                                        exp_feu)
+# Renaming and translating columns names 
+colnames(risks_exposure)<-c("insee_code",
+                             "exp_atmospheric",
+                             "exp_floods",
+                             "exp_land_mvt",
+                             "exp_fire")
+head(risks_exposure)
+# Transforming values into digital data
+risks_exposure<-risks_exposure%>%
+  mutate_at(2:ncol(risks_exposure), as.numeric)
+str(risks_exposure)
+
+## Importing "History of drought states" dataset 
+################################################
+# Since the public dataset was an 8.8GB JSON file (https://www.data.gouv.fr/fr/datasets/donnee-secheresse-vigieau/#/resources), 
+# I processed this document in parallel to make it lighter. 
+# In this study, we will therefore download the processed version of the dataset, 
+# which is publicly accessible on my GitHub.
+
+droughts <- "droughts.csv"
+if(!file.exists(droughts))
+  download.file("https://raw.githubusercontent.com/meryllm/natural_disasters_clay_movement/refs/heads/main/drought_data.csv", 
+                droughts)
+droughts<-read.csv(droughts)
+head(droughts)
+str(droughts)
+# Transforming values into digital data
+droughts<-droughts%>%
+  mutate_at(2:ncol(droughts), as.numeric)
+str(droughts)
+
+# Adding all datasets to "df1"
+df1<-df1%>%
+  inner_join(weather_year,
+             by=c("NUM_POSTE","year"),
+             relationship = "many-to-many")%>%
+  left_join(cities_names,
+            by="insee_code",
+            relationship = "many-to-many")%>%
+  left_join(pop_size,
+            by=c("insee_code","year"),
+            relationship = "many-to-many")%>%
+  left_join(houses_exposure,
+            by="insee_code",
+            relationship = "many-to-many")%>%
+  left_join(risks_exposure,
+            by="insee_code",
+            relationship = "many-to-many")%>%
+  left_join(droughts,
+            by=c("insee_code","year"),
+            relationship = "many-to-many")
+
+# Reorganizing dataframe columns
+df1<-df1%>%select(insee_code,
+               year,
+               population,
+               city_code,
+               zip_code,
+               department_name,
+               department_number,
+               region_name,
+               latitude,
+               longitude,
+               everything(),
+               -demand,
+               -nat_dis,
+               demand,
+               nat_dis)
+
+# Creation of our column containing the 3 states of natural disaster to predict: 
+df1<-df1%>%mutate(natural_disaster=ifelse(nat_dis==1,2,ifelse(demand==1,1,0)))
+df1<-df1%>%mutate(natural_disaster=factor(natural_disaster,
+                               levels=c("0","1","2"),
+                               labels=c("No Natural Disaster", "Requested", "Acknowledged")))
+
+
+#################################
+## Data Exploration & Analysis ##
+#################################
+str(df1)
+summary(df1)
+colnames(df1)
+
+# Creating a personalized theme we will apply on all our visualizations, 
+# to avoid repetitions : 
+standard_theme <- theme_bw() + theme(
+  plot.title = element_text(size = 14, face = "bold"),
+  legend.position = "bottom",
+  axis.text = element_text(size = 10),
+  axis.title = element_text(size = 12, face = "bold"),
+  legend.title = element_text(size = 12, face = "bold"),
+  legend.text = element_text(size = 10),
+  strip.text = element_text(size = 10, face = "bold")
+)
+
+# As we see there where only few acknowledged natural disaster from 2004 to 2008, so we can filter out this period
+df1%>%filter(year<2009 & nat_dis==1)%>%nrow()
+df1%>%filter(year<2010 & nat_dis==1)%>%nrow()
+dataframe_trend<-df1%>%filter(year>2007) # We keep informations about year 2008 in order to calculate trend on from 2008 to 2009 later
+df1<-df1%>%filter(year>2008)
+
+# By quickly analyzing the distribution of the number of natural disaster per city, 
+# we see that a lot of cities never had natural disaster :
+df1%>%
+  group_by(insee_code)%>%
+  summarise(n_nat_dis=sum(nat_dis))%>%
+  ggplot(aes(n_nat_dis))+
+  geom_bar(alpha=.7,fill="#4285f6")+
+  geom_text(stat = "count",
+            aes(label = scales::percent(..count../sum(..count..), accuracy = 1)), 
+            vjust = -0.5, size = 4,color="#4285f6") +
+  labs(
+    title="Distribution of the Total Number of Natural Disaster Per City",
+    x="Number of Natural Disaster",
+    y="Number of cities"
+  )+
+  standard_theme
+# Since, cities that have never had natural disasters are significantly not on clay soils, 
+# or not impacted yet about the environement. 
+# We can remove them from our study because they risk biasing the results.
+
+# Let's explore the distribution of the number of natural disaster per city, 
+# by filtering out the cities that nerver had natural disasters.
+df1%>%
+  group_by(insee_code)%>%
+  summarise(n_nat_dis=sum(nat_dis))%>%
+  filter(n_nat_dis>0)%>%
+  ggplot(aes(n_nat_dis))+
+  geom_bar(alpha=.7,fill="#4285f6")+
+  geom_text(stat = "count",
+            aes(label = scales::percent(..count../sum(..count..), accuracy = 1)), 
+            vjust = -0.5, size = 4,color="#4285f6") +
+  labs(
+    title="Distribution of the Total Number of Natural Disaster Per City",
+    x="Number of Natural Disaster",
+    y="Number of cities"
+  )+
+  standard_theme
+# We see that, from 2009 to 2020 (when city with no natural disaster are filtered out) : 
+# -> 61% of the cities had only 1 Natural disaster,
+# -> 88% of the cities had 2 natural disaster or less,
+# -> 97% of the cities had 3 natural disaster or less, 
+# -> 99% of the cities had 4 natural disaster or less.
+
+# Regarding this we can create different natural disaster group exposure, as following : 
+nat_dis_group<-df%>%
+  group_by(insee_code)%>%
+  summarise(nat_dis_group=sum(nat_dis))%>%
+  select(insee_code,nat_dis_group)
+
+# In this study, we will assume that these cities in group "nat_dis_group" = 0, are not affected by clay soils.
+# Consequently, we will arbitrarily consider that they will never be impacted by natural disasters in our predictions.
+
+# Of course, we adopt this assumption to limit the study’s scope and duration.
+# It is possible that some of these cities do sit on critical clay soils,
+# but that the specific meteorological conditions required to trigger a natural disaster have simply not occurred yet,
+# meaning the city has not been impacted or has never filed for official disaster recognition.
+
+# To better anticipate risks in such cities, more detailed information on clay soil distribution would be required.
+
+# However, in our study, we will go as far as completely excluding these cities from the modeling process,
+# in order to obtain a more meaningful and reliable "global accuracy" indicator.
+
+# By filtering cities with no natural disaster, we are considerably reducing the number of rows
+nrow(df1)
+df1%>%
+  left_join(nat_dis_group,by="insee_code")%>%
+  filter(!nat_dis_group==0)%>%
+  nrow()
+df2<-df1%>%
+  left_join(nat_dis_group,by="insee_code")%>%
+  filter(nat_dis_group!=0)
+
+# Let’s check on a 2D map of France
+# whether the mapping of natural disaster cases corresponds 
+# to the distribution of clay soil areas
+leaflet(data = df2%>%
+          filter(nat_dis==1)) %>%
+  addTiles() %>%  # OpenStreetMap basemap
+  addCircleMarkers(
+    lng = ~as.numeric(longitude),
+    lat = ~as.numeric(latitude),
+    radius = 3.5, # Defining circle markers sizes
+    fillOpacity = 0.2, # Adjustment of cicrels markers transparency
+    stroke = FALSE # Disable the border around the circles to make it more readable
+    )
+# Let’s compare it with a French map of clay soil distribution
+url <- "https://www.ain.gouv.fr/var/ide_site/storage/images/8/7/6/1/131678-1-fre-FR/2020cartefranceargiles_reference.jpg"
+destfile <- "france_clay_soil_map.jpg"
+GET(url, write_disk(destfile, overwrite = TRUE))
+image <- image_read("france_clay_soil_map.jpg")
+plot(image)
+
+# We observe that the distribution of our points with natural disasters is consistent,
+# as it closely aligns with the clay soil map.
+
+
+
+## Analyzing NAs
+################
+df2_nas<-round(colSums(is.na(df2))/nrow(df2)*100)
+df2_nas<-as.data.frame(df2_nas)
+colnames(df2_nas)<-c("na_percent")
+df2_nas%>%
+  mutate(remaining_lines=round((nrow(df2)*(1-(na_percent/100)))))%>%
+  arrange(desc(na_percent))
+# By analyzing the NAs in our dataframe,
+# We see that 9 predictors have around 60%-73% NAS
+# We see that 6 predictors have around 82%-90% NAS
+# By filtering out all NAs in our dataframe we will miss a large amount of data, 
+# We will see later if we obtain more information by keeping the predictors with a large amount of NAs
+
+
+# As we have a lot of predictors we will have to filter them, 
+# by methodically select those which are most likely to help us with our prediction algorithm.
+
+# As a reminder, correlation with between predictors do not justify causality 
+# We just use this method to make a first filter in our predictors before to studying them in detail. 
+
+# To do so, we will first focus on the correlation between "natural_disaster" and other predictors
+# Using 3 methods : 
+# -> Pearson : To measure the linear correlation between predictors (does not seem to be the most suitable method in our case, 
+#    but could still reveal information)
+# -> Spearman : To measure a nonlinear monotonic correlation between the predictors (seems more appropriate in our study, to hightlight outliers)
+
+# Adapting our mane dataframe to apply correlation calculations
+correlation_df <- df2 %>%
+  select(-city_code,
+         -zip_code,
+         -department_name,
+         -region_name,
+         -exp_atmospheric,
+         -n_AEP)
+correlation_df <-correlation_df%>%mutate_at(1:ncol(correlation_df), as.numeric)
+# Calculating correlation with different methods
+cor_pearson <- cor(correlation_df,method = "pearson", use = "pairwise.complete.obs") 
+cor_spearman <- cor(correlation_df,method = "spearman", use = "pairwise.complete.obs")
+
+# Focusing on "Natural_disaster" correlation
+natdis_cor_pearson <- cor_pearson["natural_disaster", ]
+natdis_cor_spearman <- cor_spearman["natural_disaster", ]
+
+# Filtering our relevant predictors for an absolute correlation greater than or equal to 0.17.
+selected_pearson <- names(natdis_cor_pearson[abs(natdis_cor_pearson)>=0.16])
+selected_spearman <- names(natdis_cor_spearman[abs(natdis_cor_spearman)>= 0.16])
+
+# Keeping each predictors present in the filtred predictors
+selected_predictors <- unique(c(selected_pearson, selected_spearman))
+# Placing "Natural_disaster " into last position and filtering out demand and natural_disaster
+selected_predictors<-c(selected_predictors[-c(which(selected_predictors == "natural_disaster"),
+                                      which(selected_predictors == "demand"),
+                                      which(selected_predictors == "nat_dis"))], "natural_disaster") 
+length(selected_predictors) # We still have 12 predictors to work on "Natural_disaster" prediction
+
+# Let's see if we can filter our predictors even better by removing predictors that report the same information.
+# Creating Pearson correlation matrix on selected predictors
+cor_pearson[, selected_predictors][selected_predictors, ]%>%  
+  corrplot(method = "color",
+           type = "upper",
+           order = "original", 
+           tl.col = "black",
+           tl.srt = 45, 
+           tl.cex = 0.6,
+           addCoef.col="darkgrey",
+           number.cex = 0.6,
+           main="Correlation Matrix - Pearson Method",
+           mar = c(0, 0, 6, 0),
+           line = 0)
+
+# Creating Spearman correlation matrix on selected predictors
+cor_spearman[, selected_predictors][selected_predictors, ]%>%
+  corrplot(method = "color", 
+           type = "upper", 
+           order = "original",
+           tl.col = "black", 
+           tl.srt = 45, 
+           tl.cex = 0.6,
+           addCoef.col="darkgrey"
+           ,number.cex = 0.6,
+           main="Correlation Matrix - Spearman Method",
+           mar = c(0, 0, 6, 0),
+           line = 0)
+# These correlation matrices allow us to see that there are certain correlations between the predictors
+# We will use those matrix to study each predictors individually later.
+
+# We see a strong correlation between "cumul_precipit" and "n_day_10mm_precipit".
+# This makes sense since "cumul_precipit" takes into account part of "n_day_10mm_precipit."
+# But if these two predictors are too similar, it could impact the performance of our future models.
+# It's better to keep only one of the two, in our case "cumul_precipit," which contains more information.
+selected_predictors<-selected_predictors[-which(selected_predictors=="n_day_10mm_precipit")]
+
+# Let's continue with a quick overview of all the selected predictors
+overview_predictors<-df2[,selected_predictors]
+colnames(overview_predictors)
+
+overview_predictors<-overview_predictors%>%
+  mutate_all(as.numeric)%>%
+  pivot_longer(cols = mean_temp_summer:natural_disaster, 
+               names_to = "predictors",  
+               values_to = "values")
+
+overview_predictors<-df2[,selected_predictors]
+selected_predictors
+colnames(overview_predictors)
+overview_predictors<-overview_predictors%>%pivot_longer(cols = 2:(ncol(overview_predictors)-1), 
+                        names_to = "predictors",
+                        values_to = "values")
+
+
+# What is the boxplot chart of selected predictors grouped by natural disaster occurrence ?
+overview_predictors%>%ggplot(aes(x = natural_disaster, y = values, fill = natural_disaster)) +
+  geom_boxplot(alpha=0.5) +
+  facet_wrap(~predictors, scales = "free_y") +  
+  labs(
+    title = "Baxploting selected predictors per Natural Disaster Occurence",
+    x = "Natural Disaster Ocurrence",
+    y = "Values")+
+  standard_theme+
+  theme(axis.text.x = element_blank(), 
+        axis.ticks.x = element_blank()) 
+
+# What is the density chart of selected predictors grouped by natural disaster occurrence ?
+overview_predictors%>%ggplot(aes(x = values, fill = natural_disaster)) +
+  geom_density(alpha=0.5) +
+  facet_wrap(~predictors, scales = "free") +  
+  labs(
+    title = "Density of selected predictors, per Natural Disaster Occurence",
+    x = "Values",
+    y = "Density")+ 
+  standard_theme+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# What is the histogram chart of selected predictors grouped by natural disaster occurrence ?
+overview_predictors%>%ggplot(aes(x = values, fill = natural_disaster)) +
+  geom_histogram(alpha=.7)+
+  facet_wrap(~predictors, scales = "free") +  
+  labs(
+    title = "Distribution Of Selected predictors, per Natural Disaster Occurence",
+    x = "Values",
+    y = "Number of Observations")+
+  standard_theme+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# What is the proportion chart of selected predictors grouped by natural disaster occurrence ?
+overview_predictors%>%ggplot(aes(x = values, fill = natural_disaster)) +
+  geom_histogram(alpha=.7,position="fill")+
+  facet_wrap(~predictors, scales = "free") +  
+  labs(
+    title = "Distribution Of Selected Predictors, per Natural Disaster Occurence",
+    x = "Values",
+    y = "Percentage of Observations")+
+  standard_theme+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Now let's analyse each predictor individually following "selected_predictors" order : 
+selected_predictors
+#  "year"               "cumul_precipit"     "mean_temp_summer"  
+#  "nat_dis_group"      "mean_temp"          "mean_temp_winter"  
+#  "mean_humid"         "mean_ET"            "mean_radiation"    
+#  "n_high_risk_houses" "natural_disaster" 
+
+## Analyzing "Year"
+###################
+# We saw earlier a positive correlation between year and average seasonal temperatures
+# For example, the further we go in the years, the higher the average temperature in winter : 
+df2%>%mutate(year=as.factor(year))%>%
+  ggplot(aes(year,mean_temp_winter,group=year,color=year,fill=year))+
+  geom_boxplot(alpha=.5)+
+  labs(title = "Bloxplot of Average Winter Temperature Over the Years",
+       x = "Years",
+       y = "Average Winter Temperature")+
+  standard_theme
+
+df2%>%
+  group_by(year,natural_disaster)%>%
+  summarise(n_natural_disaster=n())%>%
+  ggplot(aes(year,n_natural_disaster,group=natural_disaster,color=natural_disaster))+
+  geom_line(alpha=0.7, size=1.5)+
+  labs(title = "Quantity of Natural Disaster over the years",
+       x = "Years",
+       y = "Quantity of Natural Disaster",
+       color = "Natural Disaster")+
+  standard_theme
+
+# It seems consistent that the "year" predictor is correlated with the occurrence of natural disasters.
+# However, since the goal of this study is to predict the occurrence of natural disasters for future years,
+# We will not use this predictor when training the models.
+selected_predictors<-selected_predictors[-which(selected_predictors=="year")]
+selected_predictors
+str(selected_predictors)
+## Analyzing "cumul_precipit"
+#############################
+df2%>%group_by(year)%>%
+  summarise(sum_cumul_precipit=sum(cumul_precipit,na.rm=TRUE))%>%
+  ggplot(aes(year,sum_cumul_precipit))+
+  geom_line(color="#4285f6",alpha=0.7, size=1.5)+
+  labs(title = "Cumulative precipitation Across The Years",
+       x = "Years",
+       y = "Cumulative precipitation (in mm and 1/10")+
+  standard_theme
+# We see that the cumulative precipitation is globaly increasing over the years
+
+# Let's compare average cumulative precipitation with the number of natural disaster over the years
+df2%>%group_by(year)%>%
+  summarise(sum_cumul_precipit=sum(cumul_precipit,na.rm=TRUE),
+            n_nat_dis=sum(nat_dis))%>%
+  ggplot(aes(x=year))+
+  geom_line(aes(y=sum_cumul_precipit),color="#4285f6",alpha=0.7, size=1.5)+
+  geom_line(aes(y=n_nat_dis),color="#421",alpha=0.7, size=1.5)+
+  geom_text(aes(x=2010,y = 2.7e+06,label = "Cumulative Precipitation (in mm and 1/10)"), 
+            color = "#4285f6",alpha=.12,hjust = -0.05, size = 4.5, fontface = "bold") +
+  geom_text(aes(x=2010,y = 2e+06, label = "Number of Natural Disaster"), 
+            color = "#421",alpha=.12,hjust = -0.05, size = 4.5, fontface = "bold") +
+  labs(title = "Cumulative Precipitation & Number of Natural Disaster Across The Years",
+       x = "Years",
+       y = "Cumulative Precipitation (in mm and 1/10) & Number of natural Disaster")+
+  standard_theme
+# As values are not on the same scale this doesn't gives us pertinent information.
+# Let's apply a multiplication coefficient on the "Number of Natural Disaster"
+df2%>%group_by(year)%>%
+  summarise(sum_cumul_precipit=sum(cumul_precipit,na.rm=TRUE),
+            n_nat_dis=sum(nat_dis))%>%
+  ggplot(aes(x=year))+
+  geom_line(aes(y=sum_cumul_precipit),color="#4285f6",alpha=0.7, size=1.5)+
+  geom_line(aes(y=n_nat_dis*1e+04),color="#421",alpha=0.7, size=1.5)+
+  geom_text(aes(x=2010,y = 2.5e+07,label = "Cumulative Precipitation (in mm and 1/10)"), 
+            color = "#4285f6",alpha=.12,hjust = -0.05, size = 4.5, fontface = "bold") +
+  geom_text(aes(x=2010,y = 2.8e+07, label = "Number of Natural Disaster"), 
+            color = "#421",alpha=.12,hjust = -0.05, size = 4.5, fontface = "bold") +
+  labs(title = "Cumulative Precipitation & Number of Natural Disaster Across The Years",
+       x = "Years",
+       y = "Cumulative Precipitation (in mm and 1/10) & Number of natural Disaster")+
+  standard_theme
+# It seems that there is some correlation but as it stands,
+# this graph does not allow us to clearly draw any conclusions.
+# Can we identify a better correlation between these two predictors based 
+# on their year-to-year trends rather than their direct values?
+df2%>%group_by(year)%>%
+  summarise(sum_cumul_precipit=sum(cumul_precipit,na.rm=TRUE),
+            n_nat_dis=sum(nat_dis))%>%
+  mutate(trend_cumul_precipit = 
+           (sum_cumul_precipit-lag(sum_cumul_precipit)) / lag(sum_cumul_precipit),
+         trend_nat_dis = 
+           (n_nat_dis-lag(n_nat_dis)) / lag(n_nat_dis))%>%
+  ggplot(aes(x=year))+
+  geom_line(aes(y=trend_cumul_precipit),color="#4285f6",alpha=0.7, size=1.5)+
+  geom_line(aes(y=trend_nat_dis),color="#421",alpha=0.7, size=1.5)+
+  geom_text(aes(x=2013,y = 11,label = "Trend of Cumulative Precipitation (%)"), 
+            color = "#4285f6",alpha=.12,hjust = -0.05, size = 4.5, fontface = "bold") +
+  geom_text(aes(x=2013,y = 12.5, label = "Trend of Natural Disaster Quantity (%)"), 
+            color = "#421",alpha=.12,hjust = -0.05, size = 4.5, fontface = "bold") +
+  labs(title = "Natural Disaster & Cumulative Precipitation Trend Across The Years",
+       x = "Years",
+       y = "Trends (%)")+
+  standard_theme
+
+# These two trends do not have the same scale at all, 
+# let's apply a multiplier coefficient to the trend of the average spring temperature
+df2%>%group_by(year)%>%
+  summarise(sum_cumul_precipit=sum(cumul_precipit,na.rm=TRUE),
+            n_nat_dis=sum(nat_dis))%>%
+  mutate(trend_cumul_precipit = 
+           ((sum_cumul_precipit-lag(sum_cumul_precipit)) / lag(sum_cumul_precipit))*10,
+         trend_nat_dis = 
+           (n_nat_dis-lag(n_nat_dis)) / lag(n_nat_dis))%>%
+  ggplot(aes(x=year))+
+  geom_line(aes(y=trend_cumul_precipit),color="#4285f6",alpha=0.7, size=1.5)+
+  geom_line(aes(y=trend_nat_dis),color="#421",alpha=0.7, size=1.5)+
+  geom_text(aes(x=2013,y = 11,label = "Trend of Cumulative Precipitation (%)"), 
+            color = "#4285f6",alpha=.12,hjust = -0.05, size = 4.5, fontface = "bold") +
+  geom_text(aes(x=2013,y = 10.3,label = "(Trend in percentage multiplied by 10)"), 
+            color = "#4285f6",alpha=.12,hjust = -0.055, size = 3.5, fontface = "bold")+
+  geom_text(aes(x=2013,y = 12.5, label = "Trend of Natural Disaster Quantity (%)"), 
+            color = "#421",alpha=.12,hjust = -0.05, size = 4.5, fontface = "bold") +
+  labs(title = "Natural Disaster & Cumulative Precipitation Trend Across The Years",
+       x = "Years",
+       y = "Trends (%)")+
+  standard_theme
+
+# Let's analyze the correlation of these two predictors 
+df2%>%group_by(year)%>%
+  summarise(sum_cumul_precipit=sum(cumul_precipit,na.rm=TRUE),
+            n_nat_dis=sum(nat_dis))%>%
+  mutate(trend_cumul_precipit = 
+           (sum_cumul_precipit-lag(sum_cumul_precipit)) / lag(sum_cumul_precipit),
+         trend_nat_dis = 
+           (n_nat_dis-lag(n_nat_dis)) / lag(n_nat_dis))%>%
+  summarise(pearson_cor=cor(trend_cumul_precipit,trend_nat_dis,method="pearson",use = "pairwise.complete.obs" ),
+            spearman_cor=cor(trend_cumul_precipit,trend_nat_dis,method="spearman",use = "pairwise.complete.obs" ))
+# We see a strong negative correlation between Natural disaster trend and cumulative precipitation.
+# This suggests that a variation of a few mm precipitation from one year to the next,
+# would have a significant impact on the number of natural disasters.
+
+# Now let’s see if we can extract more insights 
+# by analyzing the precipitation trend per city per year.
+dataframe_trend_precipit<-dataframe_trend%>% # We are using the dataframe we prepared before, that contains the year 2008 to permit us to calculate 2009's trend.
+  mutate(natural_disaster=as.factor(natural_disaster))%>%
+  group_by(insee_code)%>%
+  arrange(year, .by_group = TRUE) %>%
+  mutate(trend_cumul_precipit = 
+           ((cumul_precipit-lag(cumul_precipit)) / lag(cumul_precipit)))%>%
+  ungroup()%>%
+  filter(year>2008&
+           !is.na(trend_cumul_precipit)&
+           is.finite(trend_cumul_precipit))%>%
+  left_join(nat_dis_group,by="insee_code")%>%
+  filter(!nat_dis_group==0)%>%select(insee_code,year,trend_cumul_precipit)
+
+# We are adding the trend to our dataframe
+df2<-df2%>%left_join(dataframe_trend_precipit,
+                     by=c("insee_code","year"),
+                     relationship = "many-to-many")
+
+# We are now analyzing the trend predictor
+df2%>%
+  filter(trend_cumul_precipit>-5)%>% # Filtering the outliers to make the Boxplot more readable
+  ggplot(aes(natural_disaster,log10(trend_cumul_precipit),
+             fill=natural_disaster,group=natural_disaster, color=natural_disaster))+
+  geom_boxplot(alpha=.7,  width = 0.6)+
+  labs(title = "Boxploting Cumul Precipitation Trend (Y/Y) per city, by Natural Disaster Occurence",
+       x = "Natural Disaster Occurence",
+       y = "Log 10 Cumul Precipitation Trend (Y/Y)")+
+  standard_theme+
+  theme(axis.text.x = element_blank(), 
+        axis.ticks.x = element_blank()) 
+
+df2%>%
+  filter(trend_cumul_precipit>-5)%>% # Filtering the outliers to make the Boxplot more readable
+  ggplot(aes(log10(trend_cumul_precipit),fill=natural_disaster))+
+  geom_density(alpha=.7)+
+  labs(title = "Histogram of Cumul Precipitation Trend (Y/Y) per city, by Natural Disaster Occurence",
+       x = "Log 10 Cumul Precipitation Trend (Y/Y)",
+       y = "Density")+
+  standard_theme
+
+df2%>%
+  filter(trend_cumul_precipit>-5)%>% # Filtering the outliers to make the Boxplot more readable
+  ggplot(aes(log10(trend_cumul_precipit),fill=natural_disaster))+
+  geom_histogram(alpha=.7)+
+  labs(title = "Distribution of Cumulavite Precipitation Trend (Y/Y) by Natural Disaster Occurence",
+       x = "Log 10 Cumul Precipitation Trend (Y/Y)",
+       y = "Number of obresvations")+
+  standard_theme
+
+df2%>%
+  filter(trend_cumul_precipit<2)%>%
+  ggplot(aes(trend_cumul_precipit,fill=natural_disaster))+
+  geom_histogram(alpha=.7,position="stack")+
+  facet_wrap(~nat_dis_group,scales="free")+
+  labs(title = "Distribution of Cumulative Precipitation Trend (Y/Y) per city, by Natural Disaster Occurence",
+       x = "Cumul Precipitation Trend (Y/Y)",
+       y = "Number of obresvations")+
+  standard_theme
+
+# As a reminder we know that the majority of lines in df2 is not acknowledged natural disaster 
+global_mean_nat_dis<-mean(df2$natural_disaster=="Acknowledged")
+global_mean_nat_dis
+# We have only 12.9% of the lines akwnoledged as natural disaster
+# (As a reminder, df2 is filtered on all cities having made at least one request for natural disasters)
+
+
+df2%>%
+  filter(trend_cumul_precipit<2)%>%
+  ggplot(aes(trend_cumul_precipit,fill=natural_disaster))+
+  geom_histogram(alpha=.7,position="fill")+
+  facet_wrap(~nat_dis_group,scales="free")+
+  labs(title = "Distribution of Cumulative Precipitation Trend (Y/Y) per city, by Natural Disaster Occurence",
+       x = "Cumul Precipitation Trend (Y/Y)",
+       y = "Proportion of obresvations")+
+  standard_theme+
+  geom_hline(yintercept = global_mean_nat_dis, color = "#E74C3C", linetype = "dashed", size = 1)+
+  geom_hline(yintercept = .5, color = "darkgrey", linetype = "dashed", size = 1)
+
+df2%>%
+  arrange(-desc(natural_disaster))%>%
+  filter(trend_cumul_precipit<2)%>%
+  ggplot(aes(mean_temp_summer,trend_cumul_precipit,color=natural_disaster))+
+  geom_point(alpha=.15)+
+  labs(title ="Relationship Between Summer Temperature and Precipitation Trend",
+       x="Mean Summer Temperature (°C)",
+       y="Yearly Cumulative Precipitation Trend (Y/Y, %)",
+       color = "Natural Disaster Occurence")+
+  standard_theme
+  
+df2%>%
+  arrange(-desc(natural_disaster))%>%
+  filter(trend_cumul_precipit<2)%>%
+  ggplot(aes(mean_temp_summer,trend_cumul_precipit,color=natural_disaster))+
+  geom_point(alpha=.10)+
+  facet_wrap(~nat_dis_group,scales="free")+
+  labs(title ="Relationship Between Summer Temperature and Precipitation Trend by Disaster Group",
+       x="Mean Summer Temperature (°C)",
+       y="Yearly Cumulative Precipitation Trend (Y/Y, %)",
+       color = "Natural Disaster Occurence")+
+  standard_theme
+# These graphs allow us to make the following observations:
+#> The "acknowledged" cases have a normal precipitation trend distribution centered around -1 (compared to -0.5 for cases without natural disaster requests and denied cases)
+#> Following the trends, the disaster rates deviate from the average
+
+# This supports the relevance of both the trend predictor and the city group segmentation. 
+# It also suggests that decision tree-based classification could be a suitable modeling approach.
+
+# Let’s add the newly created predictor:
+
+selected_predictors <- c(selected_predictors, 
+                     "trend_cumul_precipit")
+selected_predictors
+
+## Analyzing "mean_temp_summer"
+###############################
+df2%>%group_by(year)%>%
+  summarise(yearly_mean_temp_summer=mean(mean_temp_summer,na.rm=TRUE))%>%
+  ggplot(aes(year,yearly_mean_temp_summer))+
+  geom_line(color="#4285f6",alpha=0.7, size=1.5)+
+  labs(title = "Average Summer Temperature Across The Years",
+       x = "Years",
+       y = "Average Summer Temperature (°C)")+
+  standard_theme
+
+df2%>%
+  ggplot(aes(natural_disaster,mean_temp_summer,
+             fill=natural_disaster,
+             color=natural_disaster))+
+  geom_boxplot(alpha=.7)+
+  labs(title = "Average Summer Temperature by Natural Disaster Occurence",
+       x = "Natural Disaster Occurrence",
+       y = "Yearly Average Summer Temperature (C°)")+
+  standard_theme
+
+df2%>%
+  ggplot(aes(mean_temp_summer,fill=natural_disaster))+
+  geom_density(alpha=.7)+
+  labs(title = "Density of Global Yearly Average Summer Temperature by Natural Disaster Occurence",
+       x = "Yearly Average Summer Temperature (C°)",
+       y = "Density")+
+  standard_theme
+
+df2%>%
+  ggplot(aes(mean_temp_summer,fill=natural_disaster))+
+  geom_histogram(alpha=.7)+
+  labs(title = "Density of Global Yearly Average Summer Temperature by Natural Disaster Occurence",
+       x = "Yearly Average Summer Temperature (C°)",
+       y = "Density")+
+  standard_theme
+
+df2%>%
+  ggplot(aes(mean_temp_summer,fill=natural_disaster))+
+  geom_histogram(alpha=.7,position="stack")+
+  facet_wrap(~nat_dis_group,scales="free")+
+  labs(title = "Density of Global Yearly Average Summer Temperature by Natural Disaster Occurence",
+       x = "Yearly Average Summer Temperature (C°)",
+       y = "Density")+
+  standard_theme
+
+df2%>%
+  ggplot(aes(mean_temp_summer,fill=natural_disaster))+
+  geom_histogram(alpha=.7,position="fill")+
+  facet_wrap(~nat_dis_group,scales="free")+
+  labs(title = "Density of Global Yearly Average Summer Temperature by Natural Disaster Occurence",
+       x = "Yearly Average Summer Temperature (C°)",
+       y = "Density")+
+  standard_theme+
+  geom_hline(yintercept = global_mean_nat_dis, color = "#E74C3C", linetype = "dashed", size = 1)+
+  geom_hline(yintercept = .5, color = "darkgrey", linetype = "dashed", size = 1)
+
+# These graphs allow us to make the following observations:
+#> The average summer temperature is generally constantly increasing
+#> That the "requested" and "acknowledged" cases have a normal distribution centered on an average summer temperature around 20.5°C (compared to 19°C for cases without natural disasters)
+#> Above 22.5°C on average in summer, the "acknowledged" cases are above average.
+
+
+## Analysing "nat_dis_group"
+############################
+
+df2%>%group_by(nat_dis_group)%>%
+  summarise(city_count=n_distinct(insee_code))%>%
+  mutate(percentage = city_count / sum(city_count)) %>%
+  ggplot(aes(nat_dis_group,city_count))+
+  geom_bar(fill="#4285f6",alpha=0.7,stat="identity")+
+  labs(title="Number of cities accors Natural Disaster Groups",
+       x="Number of Cities",
+       y="Natural Disaster Group")+
+  geom_text(
+            aes(label = scales::percent(percentage, accuracy = 1)), 
+            vjust = -0.5, size = 4,color="#4285f6") +
+  standard_theme
+# As saw earlier, from 2009 to 2020 (when city with no natural disaster are filtered out) : 
+# -> 61% of the cities had only 1 Natural disaster,
+# -> 88% of the cities had 2 natural disaster or less,
+# -> 97% of the cities had 3 natural disaster or less, 
+# -> 99% of the cities had 4 natural disaster or less.
+
+#Since "nat_dis_group" is created from the data we are trying to predict,
+# when creating our future "train_set" and "test_set," 
+# we will need to recalculate this predictor in each set 
+# to avoid using test data to train our model.
+
+## Analyzing "mean_temp"
+########################
+df2%>%group_by(year)%>%
+  summarise(yearly_mean_temp=mean(mean_temp,na.rm=TRUE))%>%
+  ggplot(aes(year,yearly_mean_temp))+
+  geom_line(color="#4285f6",alpha=0.7, size=1.5)+
+  labs(title = "Global Average Temperature Across The Years",
+       x = "Years",
+       y = "Average Temperature (C°)")+
+  standard_theme
+
+df2%>%
+  ggplot(aes(natural_disaster,mean_temp,
+             fill=natural_disaster,
+             color=natural_disaster))+
+  geom_boxplot(alpha=.7)+
+  labs(title = "Global Average Temperature by Natural Disaster Occurence",
+       x = "Yearly Average Temperature (C°)",
+       y = "Density")+
+  standard_theme
+
+df2%>%
+  ggplot(aes(mean_temp,fill=natural_disaster))+
+  geom_density(alpha=.7)+
+  labs(title = "Density of Global Average Temperature by Natural Disaster Occurence",
+       x = "Yearly Average Temperature (C°)",
+       y = "Density")+
+  standard_theme
+
+df2%>%
+  ggplot(aes(mean_temp,fill=natural_disaster))+
+  geom_histogram(alpha=.7)+
+  labs(title = "Density of Global Average Temperature by Natural Disaster Occurence",
+       x = "Yearly Average Temperature (C°)",
+       y = "Density")+
+  standard_theme
+
+df2%>%
+  ggplot(aes(mean_temp,fill=natural_disaster))+
+  geom_histogram(alpha=.7,position="stack")+
+  facet_wrap(~nat_dis_group,scales="free")+
+  labs(title = "Density of Global Average Temperature by Natural Disaster Occurence",
+       x = "Yearly Average Temperature (C°)",
+       y = "Density")+
+  standard_theme
+
+df2%>%
+  ggplot(aes(mean_temp,fill=natural_disaster))+
+  geom_histogram(alpha=.7,position="fill")+
+  facet_wrap(~nat_dis_group,scales="free")+
+  labs(title = "Density of Global Average Temperature by Natural Disaster Occurence",
+       x = "Yearly Average Temperature (C°)",
+       y = "Density")+
+  standard_theme+
+  geom_hline(yintercept = global_mean_nat_dis, color = "#E74C3C", linetype = "dashed", size = 1)+
+  geom_hline(yintercept = .5, color = "darkgrey", linetype = "dashed", size = 1)
+
+df2%>%
+  arrange(-desc(natural_disaster))%>%
+  filter(trend_cumul_precipit<2)%>%
+  ggplot(aes(mean_temp,trend_cumul_precipit,color=natural_disaster))+
+  geom_point(alpha=.1)+
+  labs(title ="Relationship Between Average Temperature and Precipitation Trend",
+       x="Average Temperature (°C)",
+       y="Yearly Cumulative Precipitation Trend (Y/Y, %)",
+       color = "Natural Disaster Occurence")+
+  standard_theme
+
+df2%>%
+  arrange(-desc(natural_disaster))%>%
+  ggplot(aes(mean_temp,mean_temp_summer,color=natural_disaster))+
+  geom_point(alpha=.1)+
+  labs(title ="Relationship Between Average Temperature and Average Summer Temperature",
+       x="Average Temperature (°C)",
+       y="Average Summer Temperature (°C)",
+       color = "Natural Disaster Occurence")+
+  standard_theme
+# This predictor gives us much less information than "mea_temp_summer", 
+#it seems more sensible to remove it from our selected predictors to avoid 
+# less relevant redundancy in our models
+selected_predictors
+selected_predictors<-selected_predictors[-which(selected_predictors=="mean_temp")]
+selected_predictors
+
+## Analyzing "mean_temp_winter"
+###############################
+df2%>%group_by(year)%>%
+  summarise(yearly_mean_temp_winter=mean(mean_temp_winter,na.rm=TRUE))%>%
+  ggplot(aes(year,yearly_mean_temp_winter))+
+  geom_line(color="#4285f6",alpha=0.7, size=1.5)+
+  labs(title = "Average Winter Temperature Across The Years",
+       x = "Years",
+       y = "Average Winter Temperature (C°)")+
+  standard_theme
+
+df2%>%
+  ggplot(aes(natural_disaster,mean_temp_winter,
+             fill=natural_disaster,
+             color=natural_disaster))+
+  geom_boxplot(alpha=.7)+
+  labs(title = "Average Winter Temperature by Natural Disaster Occurence",
+       x = "Yearly Average Winter Temperature (C°)",
+       y = "Density")+
+  standard_theme
+
+df2%>%
+  ggplot(aes(mean_temp_winter,fill=natural_disaster))+
+  geom_density(alpha=.7)+
+  labs(title = "Density of Winter Temperature by Natural Disaster Occurence",
+       x = "Yearly Winter Temperature (C°)",
+       y = "Density")+
+  standard_theme
+
+df2%>%
+  ggplot(aes(mean_temp_winter,fill=natural_disaster))+
+  geom_histogram(alpha=.7)+
+  labs(title = "Distribution of Winter Temperature by Natural Disaster Occurence",
+       x = "Yearly Winter Temperature (C°)",
+       y = "Number of observations")+
+  standard_theme
+
+df2%>%
+  ggplot(aes(mean_temp_winter,fill=natural_disaster))+
+  geom_histogram(alpha=.7,position="stack")+
+  facet_wrap(~nat_dis_group)+
+  labs(title = "Density of Winter Temperature by Natural Disaster Occurence",
+       x = "Yearly Winter Temperature (C°)",
+       y = "Density")+
+  standard_theme
+
+df2%>%
+  ggplot(aes(mean_temp_winter,fill=natural_disaster))+
+  geom_histogram(alpha=.7,position="fill")+
+  facet_wrap(~nat_dis_group,scales="free")+
+  labs(title = "Density of Winter Temperature by Natural Disaster Occurence",
+       x = "Yearly Winter Temperature (C°)",
+       y = "Density")+
+  standard_theme+
+  geom_hline(yintercept = global_mean_nat_dis, color = "#E74C3C", linetype = "dashed", size = 1)+
+  geom_hline(yintercept = .5, color = "darkgrey", linetype = "dashed", size = 1)
+
+# Let's compare this predictor with those already studied previously
+df2%>%
+  arrange(-desc(natural_disaster))%>%
+  ggplot(aes(mean_temp_winter,mean_temp_summer,color=natural_disaster))+
+  geom_point(alpha=.15)+
+  labs(title ="Relationship Between Average Winter Temperature and Average Summer Temperature",
+       x="Average Winter Temperature ( C°)",
+       y="Average Summer Temperature ( C°)",
+       color = "Natural Disaster Occurence")+
+  standard_theme
+
+df2%>%
+  arrange(-desc(natural_disaster))%>%
+  filter(trend_cumul_precipit<2)%>%
+  ggplot(aes(mean_temp_winter,trend_cumul_precipit,color=natural_disaster))+
+  geom_point(alpha=.15)+
+  labs(title ="Relationship Between Average Winter Temperature and Average Summer Temperature",
+       x="Average Winter Temperature ( C°)",
+       y="Average Temperature Trend (Y/Y)",
+       color = "Natural Disaster Occurence")+
+  standard_theme
+# This predictor gives us a lot of information, but can we work with it to get more information out of it?
+
+# For example by calculating its difference with the average summer temperature?
+df2%>%group_by(year)%>%
+  mutate(spread_summer_winter=mean_temp_summer-mean_temp_winter)%>%
+  summarise(yearly_spread_summer_winter=mean(spread_summer_winter,na.rm=TRUE))%>%
+  ggplot(aes(year,yearly_spread_summer_winter))+
+  geom_line(color="#4285f6",alpha=0.7, size=1.5)+
+  labs(title = "Average Spread (Summer-Winter) Across The Years",
+       x = "Years",
+       y = "Average Spread (Summer-Winter, C°)")+
+  standard_theme
+  
+df2%>%
+  mutate(spread_summer_winter=mean_temp_summer-mean_temp_winter)%>%
+  ggplot(aes(natural_disaster,spread_summer_winter,
+             fill=natural_disaster,
+             color=natural_disaster))+
+  geom_boxplot(alpha=.7)+
+  labs(title = "Average Spread (Summer-Winter) by Natural Disaster Occurence",
+       x = "Average Spread (Summer-Winter, C°)",
+       y = "Density")+
+  standard_theme
+
+df2%>%
+  mutate(spread_summer_winter=mean_temp_summer-mean_temp_winter)%>%
+  ggplot(aes(spread_summer_winter,fill=natural_disaster))+
+  geom_density(alpha=.7)+
+  labs(title = "Density of Spread (Summer-Winter) by Natural Disaster Occurence",
+       x = "Spread (Summer-Winter, C°)",
+       y = "Density")+
+  standard_theme
+
+df2%>%
+  mutate(spread_summer_winter=mean_temp_summer-mean_temp_winter)%>%
+  ggplot(aes(spread_summer_winter,fill=natural_disaster))+
+  geom_histogram(alpha=.7)+
+  labs(title = "Distribution of Spread (Summer-Winter) by Natural Disaster Occurence",
+       x = "Spread (Summer-Winter, C°)",
+       y = "Number of observation")+
+  standard_theme
+# Remarque que la distribution des 'Acknowledged est centré sur un spread plus élevé. 
+
+# Comparons maintenant ce nouveau paramètre avec les paramètre étudiés précedement
+df2%>%
+  mutate(spread_summer_winter=mean_temp_summer-mean_temp_winter)%>%
+  arrange(-desc(natural_disaster))%>%
+  ggplot(aes(spread_summer_winter,mean_temp_summer,color=natural_disaster))+
+  geom_point(alpha=.15)+
+  labs(title ="Relationship Between Average Spread (Winter-Summer) and Average Summer Temperature",
+       x="Spread (Summer-Winter, C°)",
+       y="Average Summer Temperature ( C°)",
+       color = "Natural Disaster Occurence")+
+  standard_theme
+
+df2%>%
+  mutate(spread_summer_winter=mean_temp_summer-mean_temp_winter)%>%
+  arrange(-desc(natural_disaster))%>%
+  ggplot(aes(spread_summer_winter,mean_temp_summer,color=natural_disaster))+
+  geom_point(alpha=.15)+
+  facet_wrap(~natural_disaster)+
+  labs(title ="Relationship Between Average Spread (Winter-Summer) and Average Summer Temperature",
+       x="Spread (Summer-Winter, C°)",
+       y="Average Summer Temperature ( C°)",
+       color = "Natural Disaster Occurence")+
+  standard_theme
+
+df2%>%
+  mutate(spread_summer_winter=mean_temp_summer-mean_temp_winter)%>%
+  arrange(-desc(natural_disaster))%>%
+  filter(trend_cumul_precipit<2)%>%
+  ggplot(aes(spread_summer_winter,trend_cumul_precipit,color=natural_disaster))+
+  geom_point(alpha=.15)+
+  labs(title ="Relationship Between Average Spread (Winter-Summer) and Average Summer Temperature",
+       x="Spread (Summer-Winter, C°)",
+       y="Average Temperature Trend (Y/Y)",
+       color = "Natural Disaster Occurence")+
+  standard_theme
+
+df2%>%
+  mutate(spread_summer_winter=mean_temp_summer-mean_temp_winter)%>%
+  arrange(-desc(natural_disaster))%>%
+  filter(trend_cumul_precipit<2)%>%
+  ggplot(aes(spread_summer_winter,trend_cumul_precipit,color=natural_disaster))+
+  geom_point(alpha=.15)+
+  facet_wrap(~natural_disaster)+
+  labs(title ="Relationship Between Average Spread (Winter-Summer) and Average Summer Temperature",
+       x="Spread (Summer-Winter, C°)",
+       y="Average Temperature Trend (Y/Y)",
+       color = "Natural Disaster Occurence")+
+  standard_theme
+
+# Can we get more information from the trend between summer and winter?
+df2%>%mutate(trend_winter_summer=
+               (mean_temp_summer-mean_temp_winter)/mean_temp_winter)%>%
+  group_by(year)%>%
+  filter(trend_winter_summer<15&trend_winter_summer>-5)%>%
+  summarise(yearly_trend_winter_summer=mean(trend_winter_summer,na.rm=TRUE))%>%
+  ggplot(aes(year,yearly_trend_winter_summer))+
+  geom_line(color="#4285f6",alpha=0.7, size=1.5)+
+  labs(title = "Average Trend (Summer-Winter) Across The Years",
+       x = "Years",
+       y = "Average Trend (Summer-Winter, %)")+
+  standard_theme
+
+
+df2%>%mutate(trend_winter_summer=
+           (mean_temp_summer-mean_temp_winter)/mean_temp_winter)%>%
+  filter(trend_winter_summer<15&trend_winter_summer>-5)%>%
+  ggplot(aes(natural_disaster,trend_winter_summer,
+             fill=natural_disaster,
+             color=natural_disaster))+
+  geom_boxplot(alpha=.7)+
+  labs(title = "Average Trend (Summer-Winter) by Natural Disaster Occurence",
+       x = "Average Trend (Summer-Winter, %)",
+       y = "Density")+
+  standard_theme
+
+df2%>%mutate(trend_winter_summer=
+               (mean_temp_summer-mean_temp_winter)/mean_temp_winter)%>%
+  filter(trend_winter_summer<15&trend_winter_summer>-5)%>%
+    ggplot(aes(trend_winter_summer,fill=natural_disaster))+
+  geom_density(alpha=.7)+
+  labs(title = "Density of Trend (Summer-Winter) by Natural Disaster Occurence",
+       x = "Trend (Summer-Winter, %)",
+       y = "Density")+
+  standard_theme
+
+df2%>%mutate(trend_winter_summer=
+               (mean_temp_summer-mean_temp_winter)/mean_temp_winter)%>%
+  filter(trend_winter_summer<15&trend_winter_summer>-5)%>%
+  ggplot(aes(trend_winter_summer,fill=natural_disaster))+
+  geom_histogram(alpha=.7)+
+  labs(title = "Distribution of Trend (Summer-Winter) by Natural Disaster Occurence",
+       x = "Trend (Summer-Winter, %)",
+       y = "Number of observation")+
+  standard_theme
+
+
+df2%>%mutate(trend_winter_summer=
+               (mean_temp_summer-mean_temp_winter)/mean_temp_winter)%>%
+  filter(trend_winter_summer<15&trend_winter_summer>-5)%>%
+  ggplot(aes(trend_winter_summer,fill=natural_disaster))+
+  geom_histogram(alpha=.7,position="stack")+
+  facet_wrap(~nat_dis_group)+
+  labs(title = "Distribution of Average Temperature Trend (Y/Y) per city, by Natural Disaster Occurence",
+       x = "Average Temperature Trend (Y/Y)",
+       y = "Number of obresvations")+
+  standard_theme
+
+df2%>%mutate(trend_winter_summer=
+               (mean_temp_summer-mean_temp_winter)/mean_temp_winter)%>%
+  filter(trend_winter_summer<15&trend_winter_summer>-5)%>%
+  ggplot(aes(trend_winter_summer,fill=natural_disaster))+
+  geom_histogram(alpha=.7,position="fill")+
+  facet_wrap(~nat_dis_group,scales="free")+
+  labs(title = "Distribution of Average Temperature Trend (Y/Y) per city, by Natural Disaster Occurence",
+       x = "Average Temperature Trend (Y/Y)",
+       y = "Proportion of obresvations")+
+  standard_theme+
+  geom_hline(yintercept = global_mean_nat_dis, color = "#E74C3C", linetype = "dashed", size = 1)+
+  geom_hline(yintercept = .5, color = "darkgrey", linetype = "dashed", size = 1)
+
+
+df2%>%
+  arrange(-desc(natural_disaster))%>%
+  mutate(trend_winter_summer=
+           (mean_temp_summer-mean_temp_winter)/mean_temp_winter)%>%
+  filter(trend_winter_summer<15&trend_winter_summer>-4)%>%
+  filter(trend_cumul_precipit<2)%>%
+  ggplot(aes(trend_winter_summer,trend_cumul_precipit,color=natural_disaster))+
+  geom_point(alpha=.15)+
+  labs(title ="Relationship Between Summer Temperature and Precipitation Trend",
+       x="Mean Summer Temperature (°C)",
+       y="Yearly Cumulative Precipitation Trend (Y/Y, %)",
+       color = "Natural Disaster Occurence")+
+  standard_theme
+# Ce graphique ne nous donne pas beaucoup d'informations
+
+df2%>%
+  arrange(-desc(natural_disaster))%>%
+  mutate(trend_winter_summer=
+           (mean_temp_summer-mean_temp_winter)/mean_temp_winter)%>%
+  filter(trend_winter_summer<15&trend_winter_summer>-4)%>%
+  ggplot(aes(trend_winter_summer,mean_temp_summer,color=natural_disaster))+
+  geom_point(alpha=.15)+
+  labs(title ="Relationship Between Average Temperature and Precipitation Trend",
+       x="Temperature Trend (Winter-Summer, %)",
+       y="Average Summer Temperature ( C°)",
+       color = "Natural Disaster Occurence")+
+  standard_theme
+
+df2%>%
+  arrange(-desc(natural_disaster))%>%
+  mutate(trend_winter_summer=
+           (mean_temp_summer-mean_temp_winter)/mean_temp_winter)%>%
+  filter(trend_winter_summer<15&trend_winter_summer>-5)%>%
+  ggplot(aes(trend_winter_summer,mean_temp_summer,color=natural_disaster))+
+  geom_point(alpha=.15)+
+  facet_wrap(~natural_disaster)+
+  labs(title ="Relationship Between Average Temperature and Precipitation Trend",
+       x="Temperature Trend (Winter-Summer, %)",
+       y="Average Summer Temperature ( C°)",
+       color = "Natural Disaster Occurence")+
+  standard_theme
+# These graphs and predictors allow us to observe a lot:
+#> The spread_summer_winter allows us to distinguish the distribution of "requested" cases
+#> Few natural disaster cases are above +600% trend between winter and summer
+
+# Let’s add the newly created predictor:
+selected_predictors
+selected_predictors <- c(selected_predictors, 
+                     "spread_summer_winter",
+                     "trend_winter_summer")
+                     
+df2<-df2%>%mutate(spread_summer_winter=
+                    mean_temp_summer-mean_temp_winter,
+                  trend_winter_summer=
+                 (mean_temp_summer-mean_temp_winter)/mean_temp_winter)
+
+
+## Analyzing "mean_humid"
+#########################
+df2%>%group_by(year)%>%
+  summarise(yearly_mean_humid=mean(mean_humid,na.rm=TRUE))%>%
+  ggplot(aes(year,yearly_mean_humid))+
+  geom_line(color="#4285f6",alpha=0.7, size=1.5)+
+  labs(title = "Average Humidity Level Across The Years",
+       x = "Years",
+       y = "Average Humidity Level (%)")+
+  standard_theme
+
+df2%>%
+  ggplot(aes(natural_disaster,mean_humid,
+             fill=natural_disaster,
+             color=natural_disaster))+
+  geom_boxplot(alpha=.7)+
+  labs(title = "Average Humidity Levele by Natural Disaster Occurence",
+       x = "Average Humidity Level (%)",
+       y = "Density")+
+  standard_theme
+
+df2%>%
+  ggplot(aes(mean_humid,fill=natural_disaster))+
+  geom_density(alpha=.7)+
+  labs(title = "Density of Humidity Level by Natural Disaster Occurence",
+       x = "Average Humidity Level (%)",
+       y = "Density")+
+  standard_theme
+
+df2%>%
+  ggplot(aes(mean_humid,fill=natural_disaster))+
+  geom_histogram(alpha=.7)+
+  labs(title = "Density of Humidity Level by Natural Disaster Occurence",
+       x = "Average Humidity Level (%)",
+       y = "Density")+
+  standard_theme
+
+df2%>%
+  arrange(-desc(natural_disaster))%>%
+  ggplot(aes(mean_humid,mean_temp_summer,color=natural_disaster))+
+  geom_point(alpha=.15)+
+  labs(title ="Relationship Between Humidity Level and Average Summer Temperature",
+       x="Humidity Level (%)",
+       y="Average Summer Temperature ( C°)",
+       color = "Natural Disaster Occurence")+
+  standard_theme
+
+df2%>%
+  arrange(-desc(natural_disaster))%>%
+  filter(trend_cumul_precipit<2)%>%
+  ggplot(aes(mean_humid,trend_cumul_precipit,color=natural_disaster))+
+  geom_point(alpha=.15)+
+  labs(title ="Relationship Between Humidity Level and Cumulative Precipitation Trend",
+       x="Humidity Level (%)",
+       y="Yearly Cumulative Precipitation Trend (Y/Y, %)",
+       color = "Natural Disaster Occurence")+
+  standard_theme
+
+df2%>%
+  arrange(-desc(natural_disaster))%>%
+  filter(trend_winter_summer<15&trend_winter_summer>-4)%>%
+  ggplot(aes(mean_humid,mean_temp_winter,color=natural_disaster))+
+  geom_point(alpha=.15)+
+  labs(title ="Relationship Between Humidity Level and Average Winter Temperature",
+       x="Humidity Level (%)",
+       y="Average Winter Temperature (C°)",
+       color = "Natural Disaster Occurence")+
+  standard_theme
+
+df2%>%
+  arrange(-desc(natural_disaster))%>%
+  filter(trend_winter_summer<15&trend_winter_summer>-4)%>%
+  ggplot(aes(mean_humid,trend_winter_summer,color=natural_disaster))+
+  geom_point(alpha=.15)+
+  labs(title ="Relationship Between Humidity Level and Temperature Trend (Winter-Summer)",
+       x="Humidity Level (%)",
+       y="Temperature Trend (Winter-Summer, %)",
+       color = "Natural Disaster Occurence")+
+  standard_theme
+# This predictor shows different distributions depending on the occurrence of natural disasters
+
+## Analyzing "mean_ET"
+######################
+# As a reminder, we have a very low volume of data for the mean ET predictor (89% of NA)
+df2_nas%>%
+  mutate(remaining_lines=round((nrow(df2)*(1-(na_percent/100)))))%>%
+  arrange(desc(na_percent))
+
+df2%>%group_by(year)%>%
+  summarise(yearly_mean_ET=mean(mean_ET,na.rm=TRUE))%>%
+  ggplot(aes(year,yearly_mean_ET))+
+  geom_line(color="#4285f6",alpha=0.7, size=1.5)+
+  labs(title = "Average Evapotranspiration Across The Years",
+       x = "Years",
+       y = "Evapotranspiration (1/10 mm)")+
+  standard_theme
+
+df2%>%
+  ggplot(aes(natural_disaster,mean_ET,
+             fill=natural_disaster,
+             color=natural_disaster))+
+  geom_boxplot(alpha=.7)+
+  labs(title = "Average Evapotranspiration by Natural Disaster Occurence",
+       x = "Natural Disaster Occurrence",
+       y = "Evapotranspiration (1/10mm)")+
+  standard_theme
+
+df2%>%
+  ggplot(aes(mean_ET,fill=natural_disaster))+
+  geom_density(alpha=.7)+
+  labs(title = "Density of Evapotranspiration by Natural Disaster Occurence",
+       x = " Evapotranspiration (1/10 mm)",
+       y = "Density")+
+  standard_theme
+
+df2%>%
+  ggplot(aes(mean_ET,fill=natural_disaster))+
+  geom_histogram(alpha=.7)+
+  labs(title = "Distribution of Evapotranspiration by Natural Disaster Occurence",
+       x = "Evapotranspiration (1/10 mm)",
+       y = "Number of Observations")+
+  standard_theme
+
+df2%>%
+  arrange(-desc(natural_disaster))%>%
+  ggplot(aes(mean_ET,mean_temp_summer,color=natural_disaster))+
+  geom_point(alpha=.3)+
+  labs(title ="Relationship Between Evapotranspiration and Average Summer Temperature",
+       x="Evapotranspiration (1/10 mm)",
+       y="Average Summer Temperature ( C°)",
+       color = "Natural Disaster Occurence")+
+  standard_theme
+
+df2%>%
+  arrange(-desc(natural_disaster))%>%
+  filter(trend_cumul_precipit<2)%>%
+  ggplot(aes(mean_ET,trend_cumul_precipit,color=natural_disaster))+
+  geom_point(alpha=.3)+
+  labs(title ="Relationship Between Evapotranspiration and Cumulative Precipitation Trend",
+       x="Evapotranspiration (1/10 mm)",
+       y="Yearly Cumulative Precipitation Trend (Y/Y, %)",
+       color = "Natural Disaster Occurence")+
+  standard_theme
+
+df2%>%
+  arrange(-desc(natural_disaster))%>%
+  filter(trend_winter_summer<15&trend_winter_summer>-4)%>%
+  ggplot(aes(mean_ET,mean_temp_winter,color=natural_disaster))+
+  geom_point(alpha=.3)+
+  labs(title ="Relationship Between Evapotranspiration and Average Winter Temperature",
+       x="Evapotranspiration (1/10 mm)",
+       y="Average Winter Temperature (C°)",
+       color = "Natural Disaster Occurence")+
+  standard_theme
+
+df2%>%
+  arrange(-desc(natural_disaster))%>%
+  filter(trend_winter_summer<15&trend_winter_summer>-4)%>%
+  ggplot(aes(mean_ET,trend_winter_summer,color=natural_disaster))+
+  geom_point(alpha=.2)+
+  labs(title ="Relationship Between Evapotranspiration and Cumulative Precipitation Trend",
+       x="Evapotranspiration (1/10 mm)",
+       y="Temperature Trend (Winter-Summer, %)",
+       color = "Natural Disaster Occurence")+
+  standard_theme
+
+df2%>%
+  arrange(-desc(natural_disaster))%>%
+  ggplot(aes(mean_ET,mean_humid,color=natural_disaster))+
+  geom_point(alpha=.2)+
+  labs(title ="Relationship Between Evapotranspiration and Humidity Level",
+       x="Evapotranspiration (1/10 mm)",
+       y="Humidity Level (%)",
+       color = "Natural Disaster Occurence")+
+  standard_theme
+# The distribution of this predictor allows us to distinguish cases without natural disasters from other cases
+
+
+
+## Analyzing "mean_radiation"
+#############################
+# As a reminder, we have a very low volume of data for the mean ET predictor (90% of NA)
+
+df2%>%group_by(year)%>%
+  summarise(yearly_mean_radiation=mean(mean_radiation,na.rm=TRUE))%>%
+  ggplot(aes(year,yearly_mean_radiation))+
+  geom_line(color="#4285f6",alpha=0.7, size=1.5)+
+  labs(title = "Average Radiation Across The Years",
+       x = "Years",
+       y = "Radiation (J/cm2)")+
+  standard_theme
+
+df2%>%
+  ggplot(aes(natural_disaster,mean_radiation,
+             fill=natural_disaster,
+             color=natural_disaster))+
+  geom_boxplot(alpha=.7)+
+  labs(title = "Average Radiation by Natural Disaster Occurence",
+       x = "Natural Disaster Occurrence",
+       y = "Radiation (J/cm2)")+
+  standard_theme
+
+df2%>%
+  ggplot(aes(mean_radiation,fill=natural_disaster))+
+  geom_density(alpha=.7)+
+  labs(title = "Density of Radiation by Natural Disaster Occurence",
+       x = "Radiation (J/cm2)",
+       y = "Density")+
+  standard_theme
+
+df2%>%
+  ggplot(aes(mean_radiation,fill=natural_disaster))+
+  geom_histogram(alpha=.7)+
+  labs(title = "Distribution of Radiation by Natural Disaster Occurence",
+       x = "Radiation (J/cm2)",
+       y = "Number of Observations")+
+  standard_theme
+
+df2%>%
+  arrange(-desc(natural_disaster))%>%
+  ggplot(aes(mean_radiation,mean_temp_summer,color=natural_disaster))+
+  geom_point(alpha=.3)+
+  labs(title ="Relationship Between Radiation and Average Summer Temperature",
+       x="Radiation (J/cm2)",
+       y="Average Summer Temperature ( C°)",
+       color = "Natural Disaster Occurence")+
+  standard_theme
+
+df2%>%
+  arrange(-desc(natural_disaster))%>%
+  filter(trend_cumul_precipit<2)%>%
+  ggplot(aes(mean_radiation,trend_cumul_precipit,color=natural_disaster))+
+  geom_point(alpha=.3)+
+  labs(title ="Relationship Between Radiation and Cumulative Precipitation Trend",
+       x="Radiation (J/cm2)",
+       y="Yearly Cumulative Precipitation Trend (Y/Y, %)",
+       color = "Natural Disaster Occurence")+
+  standard_theme
+
+df2%>%
+  arrange(-desc(natural_disaster))%>%
+  ggplot(aes(mean_radiation,mean_temp_winter,color=natural_disaster))+
+  geom_point(alpha=.3)+
+  labs(title ="Relationship Between Radiation and Average Winter Temperature",
+       x="Radiation (J/cm2)",
+       y="Average Winter Temperature (C°)",
+       color = "Natural Disaster Occurence")+
+  standard_theme
+
+df2%>%
+  arrange(-desc(natural_disaster))%>%
+  filter(trend_winter_summer<15&trend_winter_summer>-4)%>%
+  ggplot(aes(mean_radiation,trend_winter_summer,color=natural_disaster))+
+  geom_point(alpha=.2)+
+  labs(title ="Relationship Between Radiation and Cumulative Precipitation Trend",
+       x="Radiation (J/cm2)",
+       y="Temperature Trend (Winter-Summer, %)",
+       color = "Natural Disaster Occurence")+
+  standard_theme
+
+df2%>%
+  arrange(-desc(natural_disaster))%>%
+  ggplot(aes(mean_radiation,mean_humid,color=natural_disaster))+
+  geom_point(alpha=.2)+
+  labs(title ="Relationship Between Radiation and Humidity Level",
+       x="Radiation (J/cm2)",
+       y="Humidity Level (%)",
+       color = "Natural Disaster Occurence")+
+  standard_theme
+
+df2%>%
+  arrange(-desc(natural_disaster))%>%
+  ggplot(aes(mean_radiation,mean_humid,color=natural_disaster))+
+  geom_point(alpha=.2)+
+  labs(title ="Relationship Between Radiation and Humidity Level",
+       x="Radiation (J/cm2)",
+       y="Humidity Level (%)",
+       color = "Natural Disaster Occurence")+
+  standard_theme
+
+df2%>%
+  arrange(-desc(natural_disaster))%>%
+  ggplot(aes(mean_radiation,mean_ET,color=natural_disaster))+
+  geom_point(alpha=.2)+
+  labs(title ="Relationship Between Radiation and Evapotranspiration",
+       x="Radiation (J/cm2)",
+       y="Evapotranspiration (1/10 mm)",
+       color = "Natural Disaster Occurence")+
+  standard_theme
+# The distribution of this predictor allows us to distinguish cases without natural disasters from other cases
+
+## Analyzing "n_high_risk_houses"
+###############################
+df2%>%group_by(year)%>%
+  summarise(sum_n_high_risk_houses=sum(n_high_risk_houses,na.rm=TRUE))%>%
+  ggplot(aes(year,sum_n_high_risk_houses))+
+  geom_line(color="#4285f6",alpha=0.7, size=1.5)+
+  labs(title = "Number of High Risks Houses Across The Years",
+       x = "Years",
+       y = "Number of High Risks Houses")+
+  standard_theme
+
+df2%>%
+  filter(n_high_risk_houses<2000)%>%
+  ggplot(aes(natural_disaster,n_high_risk_houses,
+             fill=natural_disaster,
+             color=natural_disaster))+
+  
+  geom_boxplot(alpha=.7)+
+  labs(title = "Number of High Risks Houses by Natural Disaster Occurence",
+       x = "Natural Disaster Occurrence",
+       y = "Number of High Risks Houses")+
+  standard_theme
+
+df2%>%
+  filter(n_high_risk_houses<2000)%>%
+  ggplot(aes(n_high_risk_houses,fill=natural_disaster))+
+  geom_density(alpha=.7)+
+  labs(title = "Number of High Risks Houses by Natural Disaster Occurence",
+       x = "Number of High Risks Houses",
+       y = "Density")+
+  standard_theme
+
+df2%>%
+  filter(n_high_risk_houses<2000)%>%
+  ggplot(aes(n_high_risk_houses,fill=natural_disaster))+
+  geom_histogram(alpha=.7)+
+  labs(title = "Number of High Risks Houses by Natural Disaster Occurence",
+       x = "Number of High Risks Houses",
+       y = "Number of Observations")+
+  standard_theme
+
+df2%>%
+  arrange(-desc(natural_disaster))%>%
+  filter(n_high_risk_houses<2000)%>%
+  ggplot(aes(n_high_risk_houses,mean_temp_summer,color=natural_disaster))+
+  geom_point(alpha=.3)+
+  labs(title ="Relationship Between Number of High Risks Houses and Average Summer Temperature",
+       x="Number of High Risks Houses",
+       y="Average Summer Temperature ( C°)",
+       color = "Natural Disaster Occurence")+
+  standard_theme
+
+df2%>%
+  arrange(-desc(natural_disaster))%>%
+  filter(n_high_risk_houses<2000)%>%
+  filter(trend_cumul_precipit<2)%>%
+  ggplot(aes(n_high_risk_houses,trend_cumul_precipit,color=natural_disaster))+
+  geom_point(alpha=.3)+
+  labs(title ="Relationship Between Number of High Risks Houses and Cumulative Precipitation Trend",
+       x="Number of High Risks Houses",
+       y="Yearly Cumulative Precipitation Trend (Y/Y, %)",
+       color = "Natural Disaster Occurence")+
+  standard_theme
+
+df2%>%
+  arrange(-desc(natural_disaster))%>%
+  filter(n_high_risk_houses<2000)%>%
+  ggplot(aes(n_high_risk_houses,mean_temp_winter,color=natural_disaster))+
+  geom_point(alpha=.3)+
+  labs(title ="Relationship Between Number of High Risks Houses and Average Winter Temperature",
+       x="Number of High Risks Houses",
+       y="Average Winter Temperature (C°)",
+       color = "Natural Disaster Occurence")+
+  standard_theme
+
+df2%>%
+  arrange(-desc(natural_disaster))%>%
+  filter(n_high_risk_houses<2000)%>%
+  filter(trend_winter_summer<15&trend_winter_summer>-4)%>%
+  ggplot(aes(n_high_risk_houses,trend_winter_summer,color=natural_disaster))+
+  geom_point(alpha=.2)+
+  labs(title ="Relationship Between Number of High Risks Houses and Cumulative Precipitation Trend",
+       x="Number of High Risks Houses",
+       y="Temperature Trend (Winter-Summer, %)",
+       color = "Natural Disaster Occurence")+
+  standard_theme
+
+df2%>%
+  arrange(-desc(natural_disaster))%>%
+  filter(n_high_risk_houses<2000)%>%
+  ggplot(aes(n_high_risk_houses,mean_humid,color=natural_disaster))+
+  geom_point(alpha=.2)+
+  labs(title ="Relationship Between Number of High Risks Houses and Humidity Level",
+       x="Number of High Risks Houses",
+       y="Humidity Level (%)",
+       color = "Natural Disaster Occurence")+
+  standard_theme
+
+df2%>%
+  arrange(-desc(natural_disaster))%>%
+  filter(n_high_risk_houses<2000)%>%
+  ggplot(aes(n_high_risk_houses,mean_humid,color=natural_disaster))+
+  geom_point(alpha=.2)+
+  labs(title ="Relationship Between Number of High Risks Houses and Humidity Level",
+       x="Number of High Risks Houses",
+       y="Humidity Level (%)",
+       color = "Natural Disaster Occurence")+
+  standard_theme
+
+df2%>%
+  arrange(-desc(natural_disaster))%>%
+  filter(n_high_risk_houses<2000)%>%
+  ggplot(aes(n_high_risk_houses,mean_ET,color=natural_disaster))+
+  geom_point(alpha=.2)+
+  labs(title ="Relationship Between Number of High Risks Houses and Evapotranspiration",
+       x="Number of High Risks Houses",
+       y="Evapotranspiration (1/10 mm)",
+       color = "Natural Disaster Occurence")+
+  standard_theme
+
+#This predictor doesn't give us much information, 
+# we'll remove it from the selected predictors
+selected_predictors<-selected_predictors[-which(selected_predictors=="n_high_risk_houses")]
+selected_predictors
+
+## Analyzing "natural_disaster"
+###############################
+df2%>%
+  group_by(natural_disaster)%>%
+  summarise(n=n(),percent=n/nrow(df2)*100)
+# We see that most of the time (in our dataframe) there are not natural disasters (78%)
+
+# Let's check the natural disaster ratio over the years
+df2 %>%
+  ggplot(aes(as.factor(year),fill=natural_disaster)) +
+  geom_bar(position="fill", alpha = 0.7) +
+  labs(x = "Year", y = "Proportion")
+# We see that a large minority off cities suffer of natural disaster.
+# During the worst years the ratio is around 12 and 40%.
+# The ratio has been in average much higher since 2017. 
+
+# Nous avions gardé natural disaster dans selected_predictors pour notre matrice de correlation, 
+# mais nous pouvons maintenant le retirer : 
+selected_predictors<-selected_predictors[-which(selected_predictors=="natural_disaster")]
+selected_predictors
+
+####################
+## MODEL BUIDLING ##
+####################
+
+## Multiclass prediction models 
+###############################
+
+## Dataset
+##########
+# As a reminder, we performed a preselection of the following predictors:
+selected_predictors
+str(df2[,selected_predictors])
+# We have a large number of rows: 117,320.
+
+# We have a lot of missing data.
+df2_nas<-round(colSums(is.na(df2[,selected_predictors]))/nrow(df2)*100)
+df2_nas<-as.data.frame(df2_nas)
+colnames(df2_nas)<-c("na_percent")
+df2_nas%>%
+  mutate(remaining_lines=round((nrow(df2)*(1-(na_percent/100)))))%>%
+  arrange(desc(na_percent))
+
+# If we filter out all rows with NAs in our predictors, we are left with only a few rows: 11,622.
+df2[,selected_predictors]%>%
+  drop_na()%>%
+  nrow()
+
+# From the data analysis, we observed that there are no simple interactions between the predictors.
+
+## Value to predict 
+##################
+# This is a 3-level factor:
+# > 1 - "No Natural Disaster"
+# > 2 - "Requested"
+# > 3 - "Acknowledged"
+
+# The distribution is highly imbalanced: 1 = 75.6%, 2 = 10.2%, 3 = 14.2%.
+# Levels 2 and 3 are significantly underrepresented, 
+# so we will need to pay close attention to this when building our models.
+
+
+## Models Selection
+###################
+
+# Given the nature of our classification problem : 
+#> large number of observations,
+#> highly imbalanced dataset, 
+#> with complex non-linear interactions between predictors. 
+ 
+# We selected decision tree-based models:
+# > 1. Random Forest (`randomForest`) – a robust and fast option for initial experiments.
+# > 2. Ranger (`ranger`) – a faster implementation of Random Forest (thanks to multithreading), 
+#      allowing for quicker testing across configurations.
+# > 3. XGBoost – chosen for its potential to improve predictive accuracy.
+
+
+## Metrics & Target
+###################
+
+# In our context, overall accuracy alone is not truly meaningful, as the target variable is highly imbalanced.
+# In other words, if we simply predicted only the "no natural disaster" cases (class "0"),
+# we would still achieve a global accuracy of 75.6%.
+
+# Our primary objective is to capture as many natural disaster cases as possible, 
+# even at the cost of misclassifying non-disaster cases.
+
+# So, in addition to overall accuracy, we will focus on the following metrics:
+#> Sensitivity (Recall) – indicates the percentage of true positive cases detected, per class (to maximize for class 2 and 3)
+#> F1-Score – combines precision and recall, helping to balance the evaluation of imbalanced classes.
+#> Brier Score – measures the quality of the predicted probabilities (the more confident and accurate the model is, the lower the Brier score).
+
+# Let's define the list of metrics and our corresponding objectives:
+results<-data.frame(row.names = "Target",
+           Accrcy="≥ 0.85",
+           Stivity_2="≥ 0.6",
+           Stivity_3="≥ 0.8",
+           F1_2="≥ 0.5",
+           F1_3="≥ 0.5",
+           Brier="≤ 0.3")
+
+results
+
+
+## Creating Train & Test Set
+############################
+set.seed(1)
+test_index<-createDataPartition(df2$natural_disaster,
+                                times =1, 
+                                p = 0.2, 
+                                list = FALSE)
+test_set <- df2[test_index,]
+train_set <- df2[-test_index,]
+missing_cities<-test_set%>%filter(!insee_code%in%train_set$insee_code)
+train_set<-train_set%>%union(missing_cities)
+test_set<-test_set%>%filter(insee_code%in%train_set$insee_code)
+
+# As "nat_dis_group" predictor is created from the all dataset, 
+# we need to recreate it only from the train set : 
+train_nat_dis_group<-train_set%>%
+  group_by(insee_code)%>%
+  summarise(nat_dis_group=sum(nat_dis))%>%
+  select(insee_code,nat_dis_group)
+
+train_set<-train_set%>%
+  select(-nat_dis_group)%>%
+  left_join(nat_dis_group,by="insee_code")
+
+test_set<-test_set%>%
+  select(-nat_dis_group)%>%
+  left_join(train_nat_dis_group,by="insee_code")
+
+## Naive Model
+##############
+# To establish a baseline, let's start by creating a "naive" model
+# that randomly generates the target classes (1, 2, 3) while preserving their overall proportions in the dataset.
+percentage<-train_set%>%group_by(natural_disaster)%>%
+  summarise(count=n())%>%
+  mutate(percent=count/sum(count))
+
+percentage[which(percentage$natural_disaster=="Requested"),]$percent
+
+set.seed(1)
+naive_model<-sample(c("No Natural Disaster",
+         "Requested",
+         "Acknowledged"), 
+       size=nrow(test_set), 
+       replace = TRUE, 
+       prob = c(percentage[which(percentage$natural_disaster=="No Natural Disaster"),]$percent,
+                percentage[which(percentage$natural_disaster=="Requested"),]$percent,
+                percentage[which(percentage$natural_disaster=="Acknowledged"),]$percent
+                ))
+naive_model<-factor(naive_model, levels=c("No Natural Disaster","Requested","Acknowledged"))
+y_test<-factor(test_set$natural_disaster, levels=c("No Natural Disaster","Requested","Acknowledged"))
+
+accuracy<-sum(y_test==naive_model)/length(y_test)
+accuracy
+results_naive_model<-confusionMatrix(naive_model,y_test)
+
+new_result<-data.frame(row.names = "naive_model",
+           Accrcy=round(accuracy,2),
+           Stivity_2=round(results_naive_model$byClass["Class: Requested","Sensitivity"],2),
+           Stivity_3=round(results_naive_model$byClass["Class: Acknowledged","Sensitivity"],2),
+           F1_2=round(results_naive_model$byClass["Class: Requested","F1"],2),
+           F1_3=round(results_naive_model$byClass["Class: Acknowledged","F1"],2),
+           Brier="NA")
+new_result<-new_result%>%mutate(across(everything(), as.character))
+
+results<-bind_rows(results,new_result)
+results
+
+## M1 - Random Forest - (all selected_predictors)
+#################################################
+# Let's start by testing Random Forest on the preselected predictors:
+
+# We are creating a function to make it easier to repeat the Random Forest model training.
+rf_model <- function(studied_df,model_name,focus_predictors) {
+  # Creating Train & Test Set
+  set.seed(1)
+  test_index<-createDataPartition(studied_df$natural_disaster,
+                                  times =1, 
+                                  p = 0.2, 
+                                  list = FALSE)
+  test_set <- studied_df[test_index,]
+  train_set <- studied_df[-test_index,]
+  missing_cities<-test_set%>%filter(!insee_code%in%train_set$insee_code)
+  train_set<-train_set%>%union(missing_cities)
+  test_set<-test_set%>%filter(insee_code%in%train_set$insee_code)
+  
+  # As "nat_dis_group" predictor is created from the all dataset, 
+  # we need to recreate it only from the train set : 
+  train_nat_dis_group<-train_set%>%
+    group_by(insee_code)%>%
+    summarise(nat_dis_group=sum(nat_dis))%>%
+    select(insee_code,nat_dis_group)
+  
+  train_set<-train_set%>%
+    select(-nat_dis_group)%>%
+    left_join(nat_dis_group,by="insee_code")
+  
+  test_set<-test_set%>%
+    select(-nat_dis_group)%>%
+    left_join(train_nat_dis_group,by="insee_code")
+  
+  model_train_set<-train_set%>%
+    select(focus_predictors,natural_disaster)%>%
+    drop_na()
+  
+  model_test_set<-test_set%>%
+    select(focus_predictors,natural_disaster)%>%
+    drop_na()
+  
+  y_train<-model_train_set%>%pull(natural_disaster)
+  y_train<-as.factor(y_train)
+  
+  y_test<-model_test_set%>%pull(natural_disaster)
+  y_test<-as.factor(y_test)
+  
+  x_train<-model_train_set%>%
+    select(focus_predictors)
+  
+  x_test<-model_test_set%>%
+    select(focus_predictors)
+  
+  # Random Forest Model
+  random_forest_fit_1<-randomForest(natural_disaster~., data = model_train_set,
+                                    importance = TRUE,
+                                    keep.forest = TRUE)
+  # Generating predictions & metrics
+  y_predicted<-predict(random_forest_fit_1,x_test)
+  
+  model_results<-confusionMatrix(y_predicted,y_test)
+  accuracy<-sum(y_predicted==y_test)/length(y_test)
+  
+  y_predicted_prob<-predict(random_forest_fit_1,x_test,type="prob")
+  y_test_onehot <- model.matrix(~ y_test - 1)
+  colnames(y_test_onehot)<-colnames(y_predicted_prob)
+  brier_score <- round(mean(rowSums((y_predicted_prob - y_test_onehot)^2)),2)
+  
+  # Output of the metrics
+new_result<-data.frame(row.names = model_name,
+           Accrcy=round(accuracy,2),
+           Stivity_2=round(model_results$byClass["Class: Requested","Sensitivity"],2),
+           Stivity_3=round(model_results$byClass["Class: Acknowledged","Sensitivity"],2),
+           F1_2=round(model_results$byClass["Class: Requested","F1"],2),
+           F1_3=round(model_results$byClass["Class: Acknowledged","F1"],2),
+           Brier=brier_score)
+new_result<-new_result%>%mutate(across(everything(), as.character))
+
+ # Returning 3 elements
+return(list(
+  new_result = new_result,
+  confusion_matrix = model_results,
+  random_forest = random_forest_fit_1
+))
+}
+
+# Running our function
+model_results<-rf_model(studied_df = df2,
+                        model_name = "M1_RF_(All_slctd_prms)",
+                        focus_predictors = selected_predictors)
+
+results <- bind_rows(results, model_results$new_result) # Adding the new result to our historical results
+results
+
+model_results$confusion_matrix # Showing all the metrics
+varImpPlot(model_results$random_forest) # Displaying the importance of each predictor in the decision tree
+
+# We observe that a simple Random Forest model clearly outperforms our Naive Model.
+# However, the model overepresents "No Disaster" cases, showing good sensitivity but poor specificity.
+# We also notice that "nat_dis_group" has significantly more impact than the other predictors in this prediction.
+# Could it be that this predictor is causing an overrepresentation of class 1?
+# Let's see how the model performs when we keep all selected_predictors but remove nat_dis_group.
+
+
+## M2 - (all selected_predictors - minus "nat_dis_group")
+#########################################################
+focus_predictors<-selected_predictors[-which(selected_predictors=="nat_dis_group")]
+
+model_results<-rf_model(studied_df = df2,
+                        model_name = "M2_RF_(M1_minus_nat_dis_group)",
+                        focus_predictors = focus_predictors)
+
+results <- bind_rows(results, model_results$new_result) # Adding the new result to our historical results
+results # Showing all results
+
+model_results$confusion_matrix # Showing all the metrics
+varImpPlot(model_results$random_forest) # Displaying the importance of each predictor in the decision tree
+
+# We observe that removing "nat_dis_group" significantly improves the model's performance.
+selected_predictors<-selected_predictors[-which(selected_predictors=="nat_dis_group")]
+
+## Checking missing values impact
+#################################
+# Now let’s study the impact of missing values: how does the model respond when we remove the predictors 
+# with the highest number of missing values?
+df2_nas%>%
+  mutate(remaining_lines=round((nrow(df2)*(1-(na_percent/100)))))%>%
+  arrange(desc(na_percent))
+
+# We will run a series of tests in 3 phases, based on levels of missing data:
+#> Phase 1: remove mean_radiation and mean_ET
+#> Phase 2: remove mean_radiation, mean_ET, and mean_humid
+#> Phase 3: remove mean_radiation, mean_ET, mean_humid, mean_temp_summer, spread_summer_winter, trend_winter_summer, and mean_temp_winter.
+
+remove_ph1<-c("mean_radiation", "mean_ET")
+focus_predictors_ph1<-selected_predictors[!selected_predictors %in% remove_ph1]
+new_result_NA_1<-rf_model(df2,"Phase 1",focus_predictors_ph1)
+new_result_NA_1<-bind_rows(model_results$new_result,new_result_NA_1$new_result)
+new_result_NA_1
+
+remove_ph2<-c("mean_radiation", 
+              "mean_ET",
+              "mean_humid")
+focus_predictors_ph2<-selected_predictors[!selected_predictors %in% remove_ph2]
+new_result_NA_2<-rf_model(df2,"Phase 2",focus_predictors_ph2)
+new_result_NA_2<-bind_rows(new_result_NA_1,new_result_NA_2$new_result)
+new_result_NA_2
+
+remove_ph3<-c("mean_radiation", 
+              "mean_ET",
+              "mean_humid",
+              "mean_temp_summer",
+              "spread_summer_winter",
+              "trend_winter_summer",
+              "mean_temp_winter")
+focus_predictors_ph3<-selected_predictors[!selected_predictors %in% remove_ph3]
+new_result_NA_3<-rf_model(df2,"Phase 3",focus_predictors_ph3)
+new_result_NA_3<-bind_rows(new_result_NA_2,new_result_NA_3$new_result)
+new_result_NA_3
+focus_predictors_ph3
+selected_predictors
+# Through these different tests, we observe that the model tends to overrepresent class 1 at the expense of the other classes.
+# This seems to explain why removing certain predictors significantly improves sensitivity for classes 2 and 3.
+# However, the model also becomes more confident in its predictions (brier score), which is likely due to the larger amount of available data.
+
+# Let’s now try a similar phased approach by replacing the missing values with departmental averages:
+# > Phase 1: replace NAs for "mean_temp_winter", "trend_winter_summer", "spread_summer_winter", and "mean_temp_summer".
+# > Phase 2: additionally replace NAs for mean_humid, mean_ET, and mean_radiation.
+
+# Phase 1
+df2_no_nas<-df2%>%
+  group_by(year,department_number)%>%
+  mutate(mean_temp_summer=
+           ifelse(is.na(mean_temp_summer),
+                  mean(mean_temp_summer,na.rm=TRUE),
+                  mean_temp_summer),
+         mean_temp_winter=
+           ifelse(is.na(mean_temp_winter),
+                  mean(mean_temp_winter,na.rm=TRUE),
+                  mean_temp_winter),
+         trend_winter_summer=
+           ifelse(is.na(trend_winter_summer),
+                  mean(trend_winter_summer,na.rm=TRUE),
+                  trend_winter_summer),
+         spread_summer_winter=
+           ifelse(is.na(spread_summer_winter),
+                  mean(spread_summer_winter,na.rm=TRUE),
+                  spread_summer_winter)
+  )%>%
+  ungroup()
+
+df2_nas<-round(colSums(is.na(df2_no_nas[,selected_predictors]))/nrow(df2_no_nas)*100)
+df2_nas<-as.data.frame(df2_nas)
+colnames(df2_nas)<-c("na_percent")
+df2_nas%>%
+  mutate(remaining_lines=round((nrow(df2_no_nas)*(1-(na_percent/100)))))%>%
+  arrange(desc(na_percent))
+
+focus_predictors_ph1<-focus_predictors_ph2
+new_result_NA_1<-rf_model(df2_no_nas,"Phase 1",focus_predictors_ph1)
+new_result_NA_1<-bind_rows(model_results$new_result,new_result_NA_1$new_result)
+new_result_NA_1
+
+## Phase 2
+df2_no_nas<-df2_no_nas%>%
+  group_by(year,department_number)%>%
+  mutate(mean_humid=
+           ifelse(is.na(mean_humid),
+                  mean(mean_humid,na.rm=TRUE),
+                  mean_humid),
+         mean_ET=
+           ifelse(is.na(mean_ET),
+                  mean(mean_ET,na.rm=TRUE),
+                  mean_ET),
+         mean_radiation=
+           ifelse(is.na(mean_radiation),
+                  mean(mean_radiation,na.rm=TRUE),
+                  mean_radiation))%>%
+  ungroup()
+
+df2_nas<-round(colSums(is.na(df2_no_nas[,selected_predictors]))/nrow(df2_no_nas)*100)
+df2_nas<-as.data.frame(df2_nas)
+colnames(df2_nas)<-c("na_percent")
+df2_nas%>%
+  mutate(remaining_lines=round((nrow(df2_no_nas)*(1-(na_percent/100)))))%>%
+  arrange(desc(na_percent))
+selected_predictors
+focus_predictors_ph2<-selected_predictors
+new_result_NA_2<-rf_model(df2_no_nas,"Phase 2",focus_predictors_ph2)
+new_result_NA_2<-bind_rows(new_result_NA_1,new_result_NA_2$new_result)
+new_result_NA_2
+
+# We observe that by replacing the NAs with departmental average values, we obtain a more balanced model:
+# > Our Global Accuracy exceeds 80%
+# > We lose slightly in sensitivity for class 3
+# > We lose more noticeably in sensitivity for class 2
+# > However, we significantly reduce the model's uncertainty (Brier Score)
+
+#> M3 - Random Forest - (all selected_predictors + minus " nat_dis_group" + NAs replaced by average department )
+# Let’s integrate this latest result with the previous results:
+new_result_NA_2<-new_result_NA_2[3,]
+new_result_NA_2
+rownames(new_result_NA_2)<-c("M3_RF_(M2_NAs_replcd_by_avg_dep)")
+results<-bind_rows(results,new_result_NA_2)
+results
+
+# We observe that the strong imbalance in our target variable continues to affect our results.
+# Let's try optimizing our Random Forest function by applying class weights to the minority classes.
+
+# M4 - Random Forest - (all selected_predictors + minus " nat_dis_group" + NAs replaced by average department + random_weight)
+################################################################################################################################
+# Here we modify our function to include the following class weighting (randomly chosen):
+# classwt = c("No Natural Disaster" = 0.60, "Requested" = 0.10, "Acknowledged" = 0.30)
+rf_model_2 <- function(studied_df,model_name,focus_predictors) {
+  set.seed(1)
+  test_index<-createDataPartition(studied_df$natural_disaster,
+                                  times =1, 
+                                  p = 0.2, 
+                                  list = FALSE)
+  test_set <- studied_df[test_index,]
+  train_set <- studied_df[-test_index,]
+  missing_cities<-test_set%>%filter(!insee_code%in%train_set$insee_code)
+  train_set<-train_set%>%union(missing_cities)
+  test_set<-test_set%>%filter(insee_code%in%train_set$insee_code)
+  
+  model_train_set<-train_set%>%
+    select(focus_predictors,natural_disaster)%>%
+    drop_na()
+  
+  model_test_set<-test_set%>%
+    select(focus_predictors,natural_disaster)%>%
+    drop_na()
+  
+  y_train<-model_train_set%>%pull(natural_disaster)
+  y_train<-as.factor(y_train)
+  
+  y_test<-model_test_set%>%pull(natural_disaster)
+  y_test<-as.factor(y_test)
+  
+  x_train<-model_train_set%>%
+    select(focus_predictors)
+  
+  x_test<-model_test_set%>%
+    select(focus_predictors)
+  # Random Forest Model with Ponreration
+  random_forest_fit_1<-randomForest(natural_disaster~., data = model_train_set,
+                                    importance = TRUE,
+                                    keep.forest = TRUE,
+                                    classwt = c("No Natural Disaster" = .60, 
+                                                "Requested" = 0.10, 
+                                                "Acknowledged" = 0.3)) 
+  # Generating predictions & metrics
+  y_predicted<-predict(random_forest_fit_1,x_test)
+  model_results<-confusionMatrix(y_predicted,y_test)
+  accuracy<-sum(y_predicted==y_test)/length(y_test)
+  y_predicted_prob<-predict(random_forest_fit_1,x_test,type="prob")
+  y_test_onehot <- model.matrix(~ y_test - 1)
+  colnames(y_test_onehot)<-colnames(y_predicted_prob)
+  brier_score <- round(mean(rowSums((y_predicted_prob - y_test_onehot)^2)),2)
+  # Output of the metrics 
+  new_result<-data.frame(row.names = model_name,
+                         Accrcy=round(accuracy,2),
+                         Stivity_2=round(model_results$byClass["Class: Requested","Sensitivity"],2),
+                         Stivity_3=round(model_results$byClass["Class: Acknowledged","Sensitivity"],2),
+                         F1_2=round(model_results$byClass["Class: Requested","F1"],2),
+                         F1_3=round(model_results$byClass["Class: Acknowledged","F1"],2),
+                         Brier=brier_score)
+  new_result<-new_result%>%mutate(across(everything(), as.character))
+  # Returning 3 elements
+  return(list(
+    new_result = new_result,
+    confusion_matrix = model_results,
+    random_forest = random_forest_fit_1
+  ))
+}
+model_results<-rf_model_2(studied_df = df2_no_nas,
+                          model_name = "M4_RF_(M3_random_weight)",
+                          focus_predictors = selected_predictors) #Running the function 
+model_results$new_result # Showing the new result
+model_results$confusion_matrix # Showing all metrics 
+
+varImpPlot(model_results$random_forest) # Displaying the importance of each predictor in the decision tree
+results<-bind_rows(results,model_results$new_result) # Adding the new result to historal results
+results # Showing latest results
+
+
+# We observe that by applying class weighting to the minority classes, we achieve very good performance.
+# Ideally, we should run several weighting tests to find the best configuration.
+# However, we are reaching the limits of our current "randomForest" function, which already takes about 2 minutes to run each time.
+
+# Therefore, we will now test a more efficient model that supports parallel processing: "ranger()".
+
+## M5 - Ranger - (all selected_predictors + minus " nat_dis_group" + NAs replaced by average department) 
+model_ranger <- function(studied_df,model_name,focus_predictors) {
+  # Creating Train & Test Set
+  set.seed(1)
+  test_index<-createDataPartition(studied_df$natural_disaster,
+                                  times =1, 
+                                  p = 0.2, 
+                                  list = FALSE)
+  test_set <- studied_df[test_index,]
+  train_set <- studied_df[-test_index,]
+  missing_cities<-test_set%>%filter(!insee_code%in%train_set$insee_code)
+  train_set<-train_set%>%union(missing_cities)
+  test_set<-test_set%>%filter(insee_code%in%train_set$insee_code)
+
+  model_train_set<-train_set%>%
+    select(focus_predictors,natural_disaster)%>%
+    drop_na()
+  
+  model_test_set<-test_set%>%
+    select(focus_predictors,natural_disaster)%>%
+    drop_na()
+  
+  y_train<-model_train_set%>%pull(natural_disaster)
+  y_train<-as.factor(y_train)
+  
+  y_test<-model_test_set%>%pull(natural_disaster)
+  y_test<-as.factor(y_test)
+  
+  x_train<-model_train_set%>%
+    select(focus_predictors)
+  
+  x_test<-model_test_set%>%
+    select(focus_predictors)
+  # Ranger Model
+  random_forest_fit_1<-ranger(formula = natural_disaster ~ ., 
+                              data = model_train_set,
+                              importance = "impurity",
+                              probability= TRUE,
+                              num.trees = 500,
+                              num.threads = parallel::detectCores()
+  )
+  # Generating predictions & metrics
+  y_predicted_prob<-predict(random_forest_fit_1,x_test)
+  y_predicted_prob <- y_predicted_prob$predictions
+  
+  y_predicted <- apply(y_predicted_prob, 1, function(x) colnames(y_predicted_prob)[which.max(x)])
+  y_predicted <- factor(y_predicted, levels=levels(y_test))
+  
+  model_results<-confusionMatrix(y_predicted,y_test)
+  accuracy<-sum(y_predicted==y_test)/length(y_test)
+  
+  y_test_onehot <- model.matrix(~ y_test - 1)
+  colnames(y_test_onehot)<-colnames(y_predicted_prob)
+  brier_score <- round(mean(rowSums((y_predicted_prob - y_test_onehot)^2)),2)
+  # Output of metrics
+  new_result<-data.frame(row.names = model_name,
+                         Accrcy=round(accuracy,2),
+                         Stivity_2=round(model_results$byClass["Class: Requested","Sensitivity"],2),
+                         Stivity_3=round(model_results$byClass["Class: Acknowledged","Sensitivity"],2),
+                         F1_2=round(model_results$byClass["Class: Requested","F1"],2),
+                         F1_3=round(model_results$byClass["Class: Acknowledged","F1"],2),
+                         Brier=brier_score)
+  new_result<-new_result%>%mutate(across(everything(), as.character))
+  # Returning 3 elements
+  return(list(
+    new_result = new_result,
+    confusion_matrix = model_results,
+    random_forest = random_forest_fit_1
+  ))
+}
+
+# We first apply the ranger() function without class weighting.
+model_results<-model_ranger(studied_df = df2_no_nas,
+                               model_name = "M5_Ranger_(M3)",
+                               focus_predictors = selected_predictors) # Running the function
+results<-bind_rows(results,model_results$new_result) # Adding new_result to historical results
+results # Showing latest results
+# When we compare ranger() with randomForest(), we observe a drop in sensitivity for class 3,
+# but an improvement in the Brier score.
+
+## M6 - Ranger - (all selected_predictors + minus " nat_dis_group" + NAs replaced by average department + random_weight)
+##########################################################################################################################
+# The parameters of the ranger() function do not allow true class weighting by oversampling, as in randomForest().
+# Instead, it applies a penalty in the cost function during tree construction.
+# Therefore, we will need to manually oversample the minority classes to reproduce similar conditions.
+model_ranger_weighted <- function(studied_df,model_name,weight_2,weight_3,focus_predictors) {
+  # Creating Train & Test Set
+  set.seed(1)
+  test_index<-createDataPartition(studied_df$natural_disaster,
+                                  times =1, 
+                                  p = 0.2, 
+                                  list = FALSE)
+  test_set <- studied_df[test_index,]
+  train_set <- studied_df[-test_index,]
+  missing_cities<-test_set%>%filter(!insee_code%in%train_set$insee_code)
+  train_set<-train_set%>%union(missing_cities)
+  test_set<-test_set%>%filter(insee_code%in%train_set$insee_code)
+  
+  # Manual duplication of minority classes (2 and 3)
+  set.seed(1)
+  multiple_class_2<-train_set%>%
+   filter(natural_disaster=="Requested")
+ multiple_class_2<-multiple_class_2%>%
+   sample_n(size = round(nrow(multiple_class_2)*weight_2),
+            replace = TRUE)
+ 
+ multiple_class_3<-train_set%>%
+   filter(natural_disaster=="Acknowledged")
+ multiple_class_3<-multiple_class_3%>%
+   sample_n(size = round(nrow(multiple_class_3)*weight_3),
+            replace = TRUE)
+ 
+ train_set_weighted<-bind_rows(train_set,
+                               multiple_class_2,
+                               multiple_class_3)
+
+  model_train_set_weighted<-train_set_weighted%>%
+    select(focus_predictors,natural_disaster)%>%
+    drop_na()
+  
+  model_test_set<-test_set%>%
+    select(focus_predictors,natural_disaster)%>%
+    drop_na()
+  
+  y_train<-model_train_set_weighted%>%pull(natural_disaster)
+  y_train<-as.factor(y_train)
+  
+  y_test<-model_test_set%>%pull(natural_disaster)
+  y_test<-as.factor(y_test)
+  
+  x_train<-model_train_set_weighted%>%
+    select(focus_predictors)
+  
+  x_test<-model_test_set%>%
+    select(focus_predictors)
+  # Ranger Model
+  random_forest_fit_1<-ranger(formula = natural_disaster ~ ., 
+                              data = model_train_set_weighted,
+                              importance = "impurity",
+                              probability= TRUE,
+                              num.trees = 500,
+                              num.threads = parallel::detectCores()
+  )
+  # Generating predictions and metrics
+  y_predicted_prob<-predict(random_forest_fit_1,x_test)
+  y_predicted_prob <- y_predicted_prob$predictions
+  
+  y_predicted <- apply(y_predicted_prob, 1, function(x) colnames(y_predicted_prob)[which.max(x)])
+  y_predicted <- factor(y_predicted, levels=levels(y_test))
+  
+  model_results<-confusionMatrix(y_predicted,y_test)
+  accuracy<-sum(y_predicted==y_test)/length(y_test)
+  
+  y_test_onehot <- model.matrix(~ y_test - 1)
+  colnames(y_test_onehot)<-colnames(y_predicted_prob)
+  brier_score <- round(mean(rowSums((y_predicted_prob - y_test_onehot)^2)),2)
+  
+  # Output of the metrics
+  new_result<-data.frame(row.names = model_name,
+                         Accrcy=round(accuracy,2),
+                         Stivity_2=round(model_results$byClass["Class: Requested","Sensitivity"],2),
+                         Stivity_3=round(model_results$byClass["Class: Acknowledged","Sensitivity"],2),
+                         F1_2=round(model_results$byClass["Class: Requested","F1"],2),
+                         F1_3=round(model_results$byClass["Class: Acknowledged","F1"],2),
+                         Brier=brier_score)
+  new_result<-new_result%>%mutate(across(everything(), as.character))
+  # Returning 3 elements
+  return(list(
+    new_result = new_result,
+    confusion_matrix = model_results,
+    random_forest = random_forest_fit_1
+  ))
+}
+
+# We will test different weightings for class 3 to evaluate their impact on the results and optimize its performance.
+weight_3<-seq(from=.5,to=10,by=.5)
+length(weight_3)
+all_w3_test<-map_df(weight_3, function(w){
+  model_results<-model_ranger_weighted(df2_no_nas,
+                                          paste0("Ranger_model_w3: ",w),
+                                          0,
+                                          w,
+                                          selected_predictors)
+  model_results$new_result
+})
+
+all_w3_test
+
+all_w3_test%>%
+  mutate(weight_3=weight_3)%>%
+  mutate_all(as.numeric)%>%
+  pivot_longer(
+    cols=-weight_3,
+      names_to="Metrics",
+      values_to="Values")%>%
+  ggplot(aes(x=weight_3,y=Values,color=Metrics))+
+  geom_line()+
+  labs(
+    title="Evolution of metrics based on different weightings for class 3",
+    x="Weights",
+    y="Values"
+  )+
+  standard_theme
+# We observe that the more we increase the weighting on this class,
+# the more we lose in overall performance and in precision (Brier score).
+
+
+# Now let’s study the impact of applying a weight to class 2.
+weight_2<-seq(from=.5,to=10,by=.5)
+length(weight_2)
+all_w2_test<-map_df(weight_2, function(w){
+    model_results<-model_ranger_weighted(df2_no_nas,
+                                            paste0("Ranger_model_w2: ",w),
+                                            w,
+                                            0,
+                                            selected_predictors)
+    model_results$new_result
+  })
+  
+all_w2_test
+  
+all_w2_test%>%
+    mutate(weight_2=weight_2)%>%
+    mutate_all(as.numeric)%>%
+    pivot_longer(
+      cols=-weight_2,
+      names_to="Metrics",
+      values_to="Values")%>%
+    ggplot(aes(x=weight_2,y=Values,color=Metrics))+
+    geom_line()+
+  labs(
+    title="Evolution of metrics based on different weightings for class 2",
+    x="Weights",
+    y="Values"
+  )+
+  standard_theme
+  
+# When analyzing the effect of weighting class 2, we observe the following:
+# > Increasing the weight of class 2 significantly impacts global accuracy and sensitivity for class 1.
+# > There is a sharp decline, indicating that the model needs to predict many false class 2 cases 
+#     to correctly identify a few true ones—at the expense of classes 1 and 3.
+# > The Brier score increases rapidly beyond our target of 0.35, indicating a loss in model confidence.
+# > As we approach a reasonable sensitivity for class 2, signs of overfitting begin to appear.
+
+# This outcome makes sense, as class 2 corresponds to natural disaster requests that were not 
+# officially acknowledged by the government. These cases are likely similar to class 1 (no disaster), 
+# in terms of city/year characteristics.
+
+# This result suggests that we are missing relevant predictors to properly identify class 2 cases.
+
+# Let’s focus our efforts on classes 1 and 3.
+# First, let’s revisit the weighting for class 3 to determine the most performant configuration.
+weight_3<-seq(from=1.4,to=3.4,by=.15)
+length(weight_3)
+all_w3_test<-map_df(weight_3, function(w){
+  model_results<-model_ranger_weighted(df2_no_nas,
+                                          paste0("Ranger_model_w3: ",w),
+                                          0,
+                                          w,
+                                          selected_predictors)
+  model_results$new_result
+})
+
+all_w3_test
+
+best_w3<-all_w3_test%>%
+  mutate(weight_3=weight_3)%>%
+  filter(Accrcy>.78,
+         Stivity_3>.79,
+         Brier<.31)%>%
+  arrange(-desc(Brier))%>%
+  dplyr::slice(1:1)%>%
+  pull(weight_3)
+best_w3
+
+# Let’s save our new result
+model_results<-model_ranger_weighted(df2_no_nas,
+                                        "M6_Ranger_(M5_best_weight) ",
+                                        0,
+                                        best_w3,
+                                        selected_predictors)
+model_results$new_result
+results<-bind_rows(results,model_results$new_result)
+results
+
+# Now let’s focus exclusively on predicting classes 1 and 3 (i.e., y = "nat_dis")
+
+## Binary Prediction Models 
+###########################
+
+## Metrics & Target
+###################
+
+# Let’s redefine our objectives given our new context (binary classification)
+results<-data.frame(row.names = "Target",
+                    Accrcy="≥ 0.85",
+                    Stivity="≥ 0.8",
+                    F1="≥ 0.6",
+                    Brier="≤ 0.1")
+
+## Creating train & test set
+############################
+set.seed(1)
+test_index<-createDataPartition(df2$natural_disaster,
+                                times =1, 
+                                p = 0.2, 
+                                list = FALSE)
+test_set <- df2[test_index,]
+train_set <- df2[-test_index,]
+missing_cities<-test_set%>%filter(!insee_code%in%train_set$insee_code)
+train_set<-train_set%>%union(missing_cities)
+test_set<-test_set%>%filter(insee_code%in%train_set$insee_code)
+
+## Naive Model
+##############
+# To establish a baseline, let's start by creating a "naive" model
+# that randomly generates the target class (0, 1) while preserving their overall proportions in the dataset.
+percentage<-train_set%>%group_by(nat_dis)%>%
+  summarise(count=n())%>%
+  mutate(percent=count/sum(count))
+percentage
+percentage[which(percentage$nat_dis==0),]$percent
+
+set.seed(1)
+naive_model<-sample(c(0,1), 
+                    size=nrow(test_set), 
+                    replace = TRUE, 
+                    prob = c(percentage[which(percentage$nat_dis==0),]$percent,
+                             percentage[which(percentage$nat_dis==1),]$percent
+                    ))
+
+y_test<-test_set$nat_dis
+accuracy<-sum(y_test==naive_model)/length(y_test)
+accuracy
+results_naive_model<-confusionMatrix(factor(naive_model),factor(y_test),positive="1")
+results_naive_model$byClass
+
+new_result<-data.frame(row.names = "naive_model",
+                       Accrcy=round(accuracy,4),
+                       Stivity=round(results_naive_model$byClass["Sensitivity"],4),
+                       F1=round(results_naive_model$byClass["F1"],4),
+                       Brier="NA")
+new_result<-new_result%>%mutate(across(everything(), as.character))
+new_result
+
+results<-bind_rows(results,new_result)
+results
+
+## M1 - Random Forest - best_predictors
+###################################
+# We recreate our randomForest function using the preselected predictors (selected_predictors)
+rf_model <- function(studied_df,model_name,w3,focus_predictors) {
+  # Creating Train & Test Set
+  set.seed(1)
+  studied_df<-studied_df%>%mutate(nat_dis=as.factor(nat_dis))
+  test_index<-createDataPartition(studied_df$natural_disaster,
+                                  times =1, 
+                                  p = 0.2, 
+                                  list = FALSE)
+  test_set <- studied_df[test_index,]
+  train_set <- studied_df[-test_index,]
+  missing_cities<-test_set%>%filter(!insee_code%in%train_set$insee_code)
+  train_set<-train_set%>%union(missing_cities)
+  test_set<-test_set%>%filter(insee_code%in%train_set$insee_code)
+  
+  # Manual duplication of minority
+  multiple_class_3<-train_set%>%
+    filter(nat_dis==1)
+  multiple_class_3<-multiple_class_3%>%
+    sample_n(size = round(nrow(multiple_class_3)*w3),
+             replace = TRUE)
+  
+  train_set_weighted<-bind_rows(train_set,
+                                multiple_class_3)
+  
+  model_train_set<-train_set_weighted%>%
+    select(focus_predictors,nat_dis)%>%
+    drop_na()
+  
+  model_test_set<-test_set%>%
+    select(focus_predictors,nat_dis)%>%
+    drop_na()
+  
+  y_train<-model_train_set%>%pull(nat_dis)
+  y_train<-as.factor(y_train)
+  
+  y_test<-model_test_set%>%pull(nat_dis)
+  y_test<-as.factor(y_test)
+  
+  x_train<-model_train_set%>%
+    select(focus_predictors)
+  
+  x_test<-model_test_set%>%
+    select(focus_predictors)
+  # Random Forest Model
+  random_forest_fit_1<-randomForest(nat_dis~., data = model_train_set,
+                                    importance = TRUE,
+                                    keep.forest = TRUE)
+  # Creating predictions & metrics
+  y_predicted<-predict(random_forest_fit_1,x_test)
+  
+  model_results<-confusionMatrix(y_predicted,y_test,positive="1")
+  accuracy<-sum(y_predicted==y_test)/length(y_test)
+  
+  y_predicted_prob<-predict(random_forest_fit_1,x_test,type="prob")
+  y_test_onehot <- model.matrix(~ y_test - 1)
+  colnames(y_test_onehot)<-colnames(y_predicted_prob)
+  brier_score <- round(mean(rowSums((y_predicted_prob - y_test_onehot)^2)),4)
+  # Outup of metrics
+  new_result<-data.frame(row.names = model_name,
+                         Accrcy=round(accuracy,4),
+                         Stivity=round(model_results$byClass["Sensitivity"],4),
+                         F1=round(model_results$byClass["F1"],4),
+                         Brier=brier_score)
+  new_result<-new_result%>%mutate(across(everything(), as.character))
+  # Returning 3 elements
+  return(list(
+    new_result = new_result,
+    confusion_matrix = model_results,
+    random_forest = random_forest_fit_1
+  ))
+}
+
+best_predictors<-selected_predictors
+model_results<-rf_model(df2,"M1_RF_(best_prms)",
+                        0,
+                        best_predictors) # Running our function
+results<-bind_rows(results,model_results$new_result) # Adding new result to historical results
+results # Showing latest result
+# We observe that an unparameterized Random Forest model already provides much more relevant results than our naive model.
+
+
+## M2 - Random Forest - (best_predictors + NA replaced)
+###################################################
+model_results<-rf_model(df2_no_nas,
+                        "M2_RF_(M1_NAs_replcd_by_avg_dep)",
+                        0,
+                        best_predictors)  # Running our function
+
+results<-bind_rows(results,model_results$new_result) # Adding new result to historical results
+results # Showing latest result
+# As observed earlier, when we replace NAs with departmental averages,
+# we notice a slight loss in sensitivity but a considerable improvement in the Brier score.
+
+
+## M3 - Random Forest - (best_predictors + NA replaced + weighted)
+##############################################################
+model_results<-rf_model(df2_no_nas,
+                        "M3_RF_(M2_weighted)",
+                        best_w3,
+                        best_predictors) # Running our function
+results<-bind_rows(results,model_results$new_result) # Adding new result to historical results
+results # Showing latest result
+# We observe a loss in accuracy and Brier score, but a significant gain in sensitivity.
+
+## M4 - Ranger - (best_predictors + NA replaced)
+############################################
+model_ranger <- function(studied_df,model_name,w3,focus_predictors) {
+  # Creating Train & Test Set
+  set.seed(1)
+  studied_df<-studied_df%>%mutate(nat_dis=as.factor(nat_dis))
+  test_index<-createDataPartition(studied_df$natural_disaster,
+                                  times =1, 
+                                  p = 0.2, 
+                                  list = FALSE)
+  test_set <- studied_df[test_index,]
+  train_set <- studied_df[-test_index,]
+  missing_cities<-test_set%>%filter(!insee_code%in%train_set$insee_code)
+  train_set<-train_set%>%union(missing_cities)
+  test_set<-test_set%>%filter(insee_code%in%train_set$insee_code)
+  
+  # Manual duplication of minority
+  multiple_class_3<-train_set%>%
+    filter(nat_dis==1)
+  multiple_class_3<-multiple_class_3%>%
+    sample_n(size = round(nrow(multiple_class_3)*w3),
+             replace = TRUE)
+  
+  train_set_weighted<-bind_rows(train_set,
+                                multiple_class_3)
+  
+  model_train_set<-train_set_weighted%>%
+    select(focus_predictors,nat_dis)%>%
+    drop_na()
+  
+  model_test_set<-test_set%>%
+    select(focus_predictors,nat_dis)%>%
+    drop_na()
+  
+  y_train<-model_train_set%>%pull(nat_dis)
+  y_train<-as.factor(y_train)
+  
+  y_test<-model_test_set%>%pull(nat_dis)
+  y_test<-as.factor(y_test)
+  
+  x_train<-model_train_set%>%
+    select(focus_predictors)
+  
+  x_test<-model_test_set%>%
+    select(focus_predictors)
+  
+  # Ranger Model
+  random_forest_fit_1<-ranger(formula = nat_dis ~ ., 
+                              data = model_train_set,
+                              importance = "impurity",
+                              probability= TRUE,
+                              num.trees = 500,
+                              num.threads = parallel::detectCores())
+  
+  # Creating predictions & metrics
+  y_predicted_prob<-predict(random_forest_fit_1,x_test)
+  y_predicted_prob <- y_predicted_prob$predictions
+  
+  y_predicted <- apply(y_predicted_prob, 1, function(x) colnames(y_predicted_prob)[which.max(x)])
+  y_predicted <- factor(y_predicted, levels=levels(y_test))
+  
+  model_results<-confusionMatrix(y_predicted,y_test,positive="1")
+  accuracy<-sum(y_predicted==y_test)/length(y_test)
+  
+  
+  y_test_onehot <- model.matrix(~ y_test - 1)
+  colnames(y_test_onehot)<-colnames(y_predicted_prob)
+  brier_score <- round(mean(rowSums((y_predicted_prob - y_test_onehot)^2)),4)
+  
+  # Output of metrics
+  new_result<-data.frame(row.names = model_name,
+                         Accrcy=round(accuracy,4),
+                         Stivity=round(model_results$byClass["Sensitivity"],4),
+                         F1=round(model_results$byClass["F1"],4),
+                         Brier=brier_score)
+  new_result<-new_result%>%mutate(across(everything(), as.character))
+  # Returning 3 elements
+  return(list(
+    new_result = new_result,
+    confusion_matrix = model_results,
+    random_forest = random_forest_fit_1
+  ))
+}
+
+model_results<-model_ranger(df2_no_nas,
+                        "M4_Ranger_(M2)",
+                        0,
+                        best_predictors) # Running our function
+
+results<-bind_rows(results,model_results$new_result) # Adding new result to historical results
+results # Showing latest results
+# Compared to M2, we achieve better accuracy and Brier score, but with a slight loss in sensitivity.
+
+
+## M5 - Ranger - (best_predictors + NA replaced + weighted)
+#######################################################
+model_results<-model_ranger(df2_no_nas,
+                               "M5_Ranger_(M3)",
+                               best_w3,
+                               best_predictors) # Running our function
+
+results<-bind_rows(results,model_results$new_result) # Adding new result to historical results
+results # Showing latest results
+# We obtain slightly lower performance compared to our model #3 (randomForest()),
+# however, we significantly improve the model’s confidence (Brier score).
+
+## M6 - Ranger - (best_predictors + NA replaced + weighted + threshold)
+###################################################################
+# Let’s now see if we can further refine performance by testing different
+# probability thresholds for decision-making.
+model_ranger <- function(studied_df,model_name,w3,x_threshold,focus_predictors) {
+  # Creating Train & Test Set
+  set.seed(1)
+  studied_df<-studied_df%>%mutate(nat_dis=as.factor(nat_dis))
+  test_index<-createDataPartition(studied_df$natural_disaster,
+                                  times =1, 
+                                  p = 0.2, 
+                                  list = FALSE)
+  test_set <- studied_df[test_index,]
+  train_set <- studied_df[-test_index,]
+  missing_cities<-test_set%>%filter(!insee_code%in%train_set$insee_code)
+  train_set<-train_set%>%union(missing_cities)
+  test_set<-test_set%>%filter(insee_code%in%train_set$insee_code)
+  
+  # Manual duplication of minority
+  multiple_class_3<-train_set%>%
+    filter(nat_dis==1)
+  multiple_class_3<-multiple_class_3%>%
+    sample_n(size = round(nrow(multiple_class_3)*w3),
+             replace = TRUE)
+  
+  train_set_weighted<-bind_rows(train_set,
+                                multiple_class_3)
+  
+  model_train_set<-train_set_weighted%>%
+    select(focus_predictors,nat_dis)%>%
+    drop_na()
+  
+  model_test_set<-test_set%>%
+    select(focus_predictors,nat_dis)%>%
+    drop_na()
+  
+  y_train<-model_train_set%>%pull(nat_dis)
+  y_train<-as.factor(y_train)
+  
+  y_test<-model_test_set%>%pull(nat_dis)
+  y_test<-as.factor(y_test)
+  
+  x_train<-model_train_set%>%
+    select(focus_predictors)
+  
+  x_test<-model_test_set%>%
+    select(focus_predictors)
+  
+  random_forest_fit_1<-ranger(formula = nat_dis ~ ., 
+                              data = model_train_set,
+                              importance = "impurity",
+                              probability= TRUE,
+                              num.trees = 500,
+                              num.threads = parallel::detectCores()
+  )
+  y_predicted_prob<-predict(random_forest_fit_1,x_test)
+  y_predicted_prob <- y_predicted_prob$predictions
+  
+  # Creating predictions & metrics
+  proba_class1 <- y_predicted_prob[, "1"]
+  y_predicted <- ifelse(proba_class1 > x_threshold, 1, 0) # Creating the decision threshold 
+  y_predicted <- factor(y_predicted, levels=levels(y_test))
+  
+  model_results<-confusionMatrix(y_predicted,y_test,positive="1")
+  accuracy<-sum(y_predicted==y_test)/length(y_test)
+  
+  
+  y_test_onehot <- model.matrix(~ y_test - 1)
+  colnames(y_test_onehot)<-colnames(y_predicted_prob)
+  brier_score <- round(mean(rowSums((y_predicted_prob - y_test_onehot)^2)),4)
+  
+  # Output of the metrics
+  new_result<-data.frame(row.names = model_name,
+                         Accrcy=round(accuracy,4),
+                         Stivity=round(model_results$byClass["Sensitivity"],4),
+                         F1=round(model_results$byClass["F1"],4),
+                         Brier=brier_score)
+  new_result<-new_result%>%mutate(across(everything(), as.character))
+  # Returning 3 elements
+  return(list(
+    new_result = new_result,
+    confusion_matrix = model_results,
+    random_forest = random_forest_fit_1
+  ))
+}
+
+# Let's test different thresholds
+threshold<-seq(from=.1,to=.9,by=.05)
+length(threshold)
+
+all_threshold_test<-map_df(threshold, function(x_threshold){
+  model_results<-model_ranger(df2_no_nas,
+                                 paste0("threshold: ",x_threshold),
+                                 best_w3,
+                                 x_threshold,
+                                 best_predictors)
+  model_results$new_result
+})
+all_threshold_test
+
+all_threshold_test%>%
+  mutate(threshold=threshold)%>%
+  mutate_all(as.numeric)%>%
+  pivot_longer(
+    cols=-threshold,
+    names_to="Metrics",
+    values_to="Values")%>%
+  ggplot(aes(x=threshold,y=Values,color=Metrics))+
+  geom_line()+
+  labs(
+    title="Evolution of metrics based on different threshold",
+    x="Threshold",
+    y="Values"
+  )+
+  standard_theme
+
+# In our context, we will select the threshold that makes our model:
+# > the most balanced (with the highest F1 score)
+# > with a sensitivity greater than 80%
+best_threshold<-all_threshold_test%>%
+  mutate(threshold=threshold)%>%
+  filter(Stivity>.8)%>%
+  arrange(desc(F1))%>%
+  dplyr::slice(1:1)%>%
+  pull(threshold)
+best_threshold
+
+# Let’s add the best result to the results tracking table
+new_result<-all_threshold_test%>%
+  mutate(threshold=threshold)%>%
+  filter(Stivity>.8)%>%
+  arrange(desc(F1))%>%
+  dplyr::slice(1:1)%>%
+  select(-threshold)
+
+rownames(new_result)<-c("M6_Ranger_(M5_threshold)") # Creating new result name
+results<-bind_rows(results,new_result) # Adding new result to historical results
+results # Showing latest results
+
+## M7 - Ranger - (best_predictors + NA replaced + weighted + threshold + cross validation)
+######################################################################################
+# Let’s now check using cross-validation:
+# > whether there is any overfitting
+# > and whether we can achieve even better overall performance
+model_ranger_cv<- function(studied_df,model_name,w3,x_threshold,focus_predictors,k_fold) {
+  # Creating Train & Test Set
+  set.seed(1)
+  studied_df<-studied_df%>%mutate(nat_dis=as.factor(nat_dis))
+  folds <- createFolds(studied_df$nat_dis, k = k_fold, list = TRUE, returnTrain = FALSE)
+  
+  # Creating cross validation loop for each fold
+  results_fold <- lapply(folds, function(test_index) {
+  test_set <- studied_df[test_index,]
+  train_set <- studied_df[-test_index,]
+  missing_cities<-test_set%>%filter(!insee_code%in%train_set$insee_code)
+  train_set<-train_set%>%union(missing_cities)
+  test_set<-test_set%>%filter(insee_code%in%train_set$insee_code)
+  
+  # Manual duplication of minority
+  multiple_class_3<-train_set%>%
+    filter(nat_dis==1)
+  multiple_class_3<-multiple_class_3%>%
+    sample_n(size = round(nrow(multiple_class_3)*w3),
+             replace = TRUE)
+  
+  train_set_weighted<-bind_rows(train_set,
+                                multiple_class_3)
+  
+  model_train_set<-train_set_weighted%>%
+    select(focus_predictors,nat_dis)%>%
+    drop_na()
+  
+  model_test_set<-test_set%>%
+    select(focus_predictors,nat_dis)%>%
+    drop_na()
+  
+  y_train<-model_train_set%>%pull(nat_dis)
+  y_train<-as.factor(y_train)
+  
+  y_test<-model_test_set%>%pull(nat_dis)
+  y_test<-as.factor(y_test)
+  
+  x_train<-model_train_set%>%
+    select(focus_predictors)
+  
+  x_test<-model_test_set%>%
+    select(focus_predictors)
+  # Ranger Model
+  model<-ranger(formula = nat_dis ~ ., 
+                              data = model_train_set,
+                              importance = "impurity",
+                              probability= TRUE,
+                              num.trees = 500,
+                              num.threads = parallel::detectCores())
+  # Creating predictions & metrics
+  y_predicted_prob<-predict(model,x_test)
+  y_predicted_prob <- y_predicted_prob$predictions
+  
+  proba_class1 <- y_predicted_prob[, "1"]
+  y_predicted <- ifelse(proba_class1 > x_threshold, 1, 0) # Creating the decision threshold
+  y_predicted <- factor(y_predicted, levels=levels(y_test))
+  
+  model_results<-confusionMatrix(y_predicted,y_test,positive="1")
+  accuracy<-sum(y_predicted==y_test)/length(y_test)
+  
+  
+  y_test_onehot <- model.matrix(~ y_test - 1)
+  colnames(y_test_onehot)<-colnames(y_predicted_prob)
+  brier_score <- round(mean(rowSums((y_predicted_prob - y_test_onehot)^2)),4)
+  # Output of the metrics
+  data.frame(row.names = model_name,
+                         Accrcy=round(accuracy,4),
+                         Stivity=round(model_results$byClass["Sensitivity"],4),
+                         F1=round(model_results$byClass["F1"],4),
+                         Brier=brier_score)
+})
+  
+  # Calculating the average metrics across all folds
+  cv_result<-bind_rows(results_fold)%>%
+    summarise(across(everything(),mean,na.rm=TRUE))%>%
+    mutate(across(everything(),round,4))%>%
+    mutate(across(everything(),as.character))
+  rownames(cv_result)<-c(model_name)
+# Returning average metrics
+  return(cv_result)
+}
+new_result<-model_ranger_cv(studied_df=df2_no_nas,
+                   model_name="M7_Ranger(M6_cv)",
+                   w3=best_w3,
+                   x_threshold=best_threshold,
+                   focus_predictors=best_predictors,
+                   k_fold=5) # Running our function
+results<-bind_rows(results,new_result) # Adding new result to historical results
+results # Showing latest results
+# We observe that our model is stable, indicating no apparent overfitting.
+# The model’s overall performance even turns out to be slightly better.
+
+
+## M8 - XG BOOST (best_predictors + NA replaced + weighted + threshold)
+####################################################################
+
+# Let’s now try an XGBoost model
+model_xgboost <- function(studied_df,model_name,w3,x_threshold,focus_predictors) {
+  # Creating Train & Test Set
+  set.seed(1)
+  studied_df<-studied_df%>%mutate(nat_dis=as.factor(nat_dis))
+  test_index<-createDataPartition(studied_df$natural_disaster,
+                                  times =1, 
+                                  p = 0.2, 
+                                  list = FALSE)
+  test_set <- studied_df[test_index,]
+  train_set <- studied_df[-test_index,]
+  missing_cities<-test_set%>%filter(!insee_code%in%train_set$insee_code)
+  train_set<-train_set%>%union(missing_cities)
+  test_set<-test_set%>%filter(insee_code%in%train_set$insee_code)
+  
+  # Manual duplication of minority
+  multiple_class_3<-train_set%>%
+    filter(nat_dis==1)
+  multiple_class_3<-multiple_class_3%>%
+    sample_n(size = round(nrow(multiple_class_3)*w3),
+             replace = TRUE)
+  
+  train_set_weighted<-bind_rows(train_set,
+                                multiple_class_3)
+  
+  model_train_set<-train_set_weighted%>%
+    select(focus_predictors,nat_dis)%>%
+    drop_na()
+  
+  model_test_set<-test_set%>%
+    select(focus_predictors,nat_dis)%>%
+    drop_na()
+  
+  y_train<-model_train_set%>%pull(nat_dis)
+  y_train<-as.numeric(as.character(y_train))
+
+  y_test<-model_test_set%>%pull(nat_dis)
+  y_test<-as.numeric(as.character(y_test))
+  
+  x_train<-model_train_set%>%
+    select(focus_predictors)
+  
+  x_test<-model_test_set%>%
+    select(focus_predictors)
+  
+  x_train <- sparse.model.matrix(~ . -1, data = x_train)
+  x_test  <- sparse.model.matrix(~ . -1, data = x_test)
+  
+  # XGB MODEL
+  xgb_model<-xgboost(x_train,
+                     y_train,
+                     nrounds = 100,
+                     objective = "binary:logistic")
+# Creating predictions & metrics
+  y_predicted_prob <- predict(xgb_model, x_test)
+  y_predicted <- ifelse(y_predicted_prob > best_threshold, 1, 0) # Creating the decision threshold
+  
+  xgb_model_results<-confusionMatrix(factor(y_predicted), factor(y_test), positive="1")
+  
+  model_results<-confusionMatrix(as.factor(y_predicted),as.factor(y_test),positive="1")
+  accuracy<-sum(y_predicted==y_test)/length(y_test)
+  
+  y_test_onehot <- model.matrix(~ y_test - 1)
+  colnames(y_test_onehot)<-colnames(y_predicted_prob)
+  brier_score <- round(mean(rowSums((y_predicted_prob - y_test_onehot)^2)),4)
+  
+  # Output of the metrics
+  new_result<-data.frame(row.names = model_name,
+                         Accrcy=round(accuracy,4),
+                         Stivity=round(model_results$byClass["Sensitivity"],4),
+                         F1=round(model_results$byClass["F1"],4),
+                         Brier=brier_score)
+  new_result<-new_result%>%mutate(across(everything(), as.character))
+  # Returning 2 elements 
+  return(list(
+    new_result = new_result,
+    confusion_matrix = model_results
+  ))
+}
+
+new_result<-model_xgboost(studied_df=df2_no_nas,
+                               model_name="M8_XGB_(M6)",
+                               w3=best_w3,
+                               x_threshold=best_threshold,
+                               focus_predictors=best_predictors)
+
+new_result$new_result
+results
+results<-bind_rows(results,new_result$new_result)
+results
+# We obtain slightly lower accuracy 
+# but we gain significantly in sensitivity and confidence — the Brier score has dropped considerably.
+
+
+## M9 - XG BOOST (best_predictors + NA replaced + weighted + threshold + cross validation)
+######################################################################################
+# Let’s now run cross-validation on our model to check its stability
+model_xgboost_cv<- function(studied_df,model_name,w3,x_threshold,focus_predictors,k_fold) {
+  
+  # Creating Train Set & Test Set
+  set.seed(1)
+  studied_df<-studied_df%>%mutate(nat_dis=as.factor(nat_dis))
+  folds <- createFolds(studied_df$nat_dis, k = k_fold, list = TRUE, returnTrain = FALSE)
+  
+  # Creating cross validation loop for each fold
+  results_fold <- lapply(folds, function(test_index) {
+    test_set <- studied_df[test_index,]
+    train_set <- studied_df[-test_index,]
+    missing_cities<-test_set%>%filter(!insee_code%in%train_set$insee_code)
+    train_set<-train_set%>%union(missing_cities)
+    test_set<-test_set%>%filter(insee_code%in%train_set$insee_code)
+    
+    # Manual duplication of minority
+    multiple_class_3<-train_set%>%
+      filter(nat_dis==1)
+    multiple_class_3<-multiple_class_3%>%
+      sample_n(size = round(nrow(multiple_class_3)*w3),
+               replace = TRUE)
+    
+    train_set_weighted<-bind_rows(train_set,
+                                  multiple_class_3)
+    
+    model_train_set<-train_set_weighted%>%
+      select(focus_predictors,nat_dis)%>%
+      drop_na()
+    
+    model_test_set<-test_set%>%
+      select(focus_predictors,nat_dis)%>%
+      drop_na()
+    
+    y_train<-model_train_set%>%pull(nat_dis)
+    y_train<-as.numeric(as.character(y_train))
+    
+    y_test<-model_test_set%>%pull(nat_dis)
+    y_test<-as.numeric(as.character(y_test))
+    
+    x_train<-model_train_set%>%
+      select(focus_predictors)
+    
+    x_test<-model_test_set%>%
+      select(focus_predictors)
+    
+    x_train <- sparse.model.matrix(~ . -1, data = x_train)
+    x_test  <- sparse.model.matrix(~ . -1, data = x_test)
+    
+    # XGB MODEL
+    xgb_model<-xgboost(x_train,
+                       y_train,
+                       nrounds = 100,
+                       objective = "binary:logistic")
+    
+    # Creating predictions & metrics
+    y_predicted_prob <- predict(xgb_model, x_test)
+    y_predicted <- ifelse(y_predicted_prob > best_threshold, 1, 0) # Creating the decision threshold
+    
+    xgb_model_results<-confusionMatrix(factor(y_predicted), factor(y_test), positive="1")
+    
+    model_results<-confusionMatrix(as.factor(y_predicted),as.factor(y_test),positive="1")
+    accuracy<-sum(y_predicted==y_test)/length(y_test)
+    
+    y_test_onehot <- model.matrix(~ y_test - 1)
+    colnames(y_test_onehot)<-colnames(y_predicted_prob)
+    brier_score <- round(mean(rowSums((y_predicted_prob - y_test_onehot)^2)),4)
+    
+    # Output of the metrics
+    data.frame(row.names = model_name,
+               Accrcy=round(accuracy,4),
+               Stivity=round(model_results$byClass["Sensitivity"],4),
+               F1=round(model_results$byClass["F1"],4),
+               Brier=brier_score)
+  })
+  # Calculating the average metrics across all folds
+  cv_result<-bind_rows(results_fold)%>%
+    summarise(across(everything(),mean,na.rm=TRUE))%>%
+    mutate(across(everything(),round,4))%>%
+    mutate(across(everything(),as.character))
+  rownames(cv_result)<-c(model_name)
+  # Returning the average metrics 
+  return(cv_result)
+}
+
+new_result<-model_xgboost_cv(studied_df=df2_no_nas,
+                               model_name="M9_XGB_(M6_cv)",
+                               w3=best_w3,
+                               x_threshold=best_threshold,
+                               focus_predictors=best_predictors,
+                               k_fold=5) # Running our function
+
+results<-bind_rows(results,new_result) # Adding new result to historical results
+results # Showing the latest result
+# The results show that the model is robust and there is no apparent overfitting.
+
+
+################
+## CONCLUSION ##
+################
+
+# Context
+#########
+#> Professional certificate
+# -------------------------
+# As a reminder, this project is part of a global "Professional Certificate Program in Data Science" from Harvard University on Edx platform ("https://pll.harvard.edu/series/professional-certificate-data-science")
+# The purpose of this project was to autonomously put into practice all the knowledge learned during the past courses. 
+
+#> Project Selection
+# ------------------
+# Here is the list of criteria that led me to choose this topic for my project:
+# > The accessibility of data from public databases
+# > The accessibility of the subject itself (many French citizens are affected by clay soil movement)
+# > The ease of communicating the topic to a wider audience (a concrete issue that impacts our immediate environment)
+# > A problem complex enough to apply the knowledge gained during the training,
+# while also requiring the learning of new tools and working methods.
+
+#> Hardware and Tools
+# -------------------
+# > IDE: RStudio
+# > Language: R (version 4.4.1 - 2024-06-14)
+# > Operating System: macOS Sonoma 14.4
+# > Computer: MacBook Pro – Apple M3 Pro – 18 GB RAM
+
+
+# Results
+#########
+
+#> Databases
+# ----------
+# For this study, we first downloaded numerous public datasets:
+#> History of requests and acknowledgement of "natural disasters" per city, linked to clay movements.
+#> Cities exposure to climate risks in 2016
+#> Map of exposure to the phenomenon of shrinkage-swelling of clays covers metropolitan France (excluding the city of Paris)"
+#> GPS positions of all French cities
+#> Monthly basic climatological data by department (from 1950 to 2023)
+#> Population size per city per year
+#> History of droughts by municipality
+
+#> Data Analysis & Engineering
+# ----------------------------
+# Then, through data analysis, we were able to identify the most relevant predictors.
+# Our data engineering process allowed us to create new, meaningful features.
+# One-third of the features used in our final model resulted from our data engineering efforts:
+# trend_cumulative_precipitation, trend_winter_summer, and spread_summer_winter.
+
+#> Multiclass prediction
+# ----------------------
+# We initially focused on the target variable "natural_disaster",
+# a 3-level factor: 1 - "No Natural Disaster", 2 - "Requested", 3 - "Acknowledged".
+# We developed the following models: randomForest and ranger.
+# We achieved good results for predicting classes 1 and 3 after applying optimal class weighting,
+# without significantly harming the prediction of class 1.
+# However, we were not able to improve predictions for class 2 without negatively impacting class 1.
+# Here are the results of our last model: 
+# Accuraccy: 0.79      
+# Sensitivity Class 2: 0.21       
+# Sensitivity Class 3: 0.8   
+# F1 Score Class 2: 0.3  
+# F1 Score Class 3: 0.63  
+# Brier score: 0.29
+
+# This suggests that there may be a loss of information in our dataset.
+# We may be missing variables that capture complex relationships within the data.
+# As a result, we decided to continue the study focusing exclusively on classes 1 and 3.
+
+#> Binary prediction 
+# ------------------
+# So, in a second phase, we focused on the target variable "nat_dis",
+# a binary factor with 2 levels: 0 - "No Natural Disaster", 1 - "Acknowledged"
+# We developed the following models: randomForest, ranger, and XGBoost.
+# We optimized the following parameters: class 1 weighting and the ideal decision probability threshold.
+# After cross-validation, we achieved balanced, stable, and accurate results:
+# > Accuracy: 0.8688
+# > Sensitivity: 0.8375
+# > F1 score: 0.635
+# > Brier score: 0.0834
+
+
+# Improvement 
+#############
+# Several improvement paths can be considered to optimize our model’s performance:
+
+#> Exclusion of cities with no natural disasters (nat_dis_group = 0)
+# ------------------------------------------------------------------
+# For simplicity, we excluded them from the modeling process. 
+# This arbitrary choice may hide true risk exposure due to a lack of historical claims.
+# It would be interesting to create a dedicated prediction model for these cities,
+# based on those that had no natural disasters for many years but were affected in recent years.
+
+#> We have only used one method to handle missing data
+# ----------------------------------------------------
+# So far, we used simplistic imputation replacing missing values with the average by department. 
+# To enhance robustness, more advanced imputation (for exemple: KNN imputation, multiple imputation, 
+# or predictive imputation) could improve accuracy. 
+
+#> Key data is missing
+# --------------------
+# The model does not integrate soil composition data, which is crucial for predicting shrink-swell risks. 
+# Including such external geotechnical datasets could significantly refine predictions.
+
+#> More data analysis & engineering
+# ---------------------------------
+# To move quickly, we focused only on a few features most correlated with our target variable.
+# However, we are likely missing complex relationships between features and with the target itself.
+# A more in-depth data analysis and additional feature engineering would likely improve performance
+# by capturing complementary information.
+# Unsupervised learning methods (e.g., neural networks) or techniques like Singular Value Decomposition (SVD)
+# could help uncover complex relationships between features.
+
+
+# Next Steps 
+############
+# The objective of this project was to provide a working foundation for the various stakeholders involved in this issue.
+# This is why the indicators and performance metrics were selected to prioritize balanced results.
+# Moving forward, each stakeholder will be able to adapt this project to their specific business needs.
+
+# Here are a few examples of business-related concerns for the stakeholders involved:
+# > Insurers: Anticipate the amount of funds to be released and assess risk levels.
+# > Individuals: Anticipate and initiate insurance and repair procedures only when truly necessary.
+# > Municipalities/Prefectures: Anticipate the handling of large volumes of disaster declaration requests.
+
+# And here are a few ideas for how indicators and model development could be tailored:
+# > Focus model development on the ability to predict in advance (i.e., using the least amount of data from the target year).
+#     For example, instead of engineering features over the full 12 months of the target year,
+#     features could be built using the last 6 months of the previous year and the first 6 months of the current year.
+# > A risk calculation formula for insurers could be developed:
+#     (theoretical overpricing = false positives × cost) - (theoretical underpricing = false negatives × cost)
+
+
+#############################
+##  Sources and citations  ##
+#############################
+
+# Ministry of Ecological Transition - 
+# "Mapping of individual houses during shrinkage-swelling of clays" (June 2021)
+# https://www.statistiques.developpement-durable.gouv.fr/media/4551/download?inline
+
+# General Commission For Sustainable Development - 
+# "The vulnerability of municipalities to climate risks: 
+# method note for the calculation and typological classification" (january 2020)
+# https://www.statistiques.developpement-durable.gouv.fr/media/3509/download?inline
+
+# General Commission For Sustainable Development - 
+# "Clay shrinkage and swelling: more than 4 million houses potentially highly exposed" (otcober 2017)
+# https://www.statistiques.developpement-durable.gouv.fr/media/612/download?inline
+
+# Central Reinsurance Fund (Caisse Centrale de Réassurance - CCR )
+# "Consequences Of Climate Change On The Cost Of Natural Disasters In France By 2050" (september 2023)
+# https://www.ccr.fr/documents/35794/1255983/CCR+Etude+climat+BAG+23102023+page+22mo.pdf/68b95f6e-8238-4dcc-6c56-025fa410257b?t=1698161402128
+
+# Ministry of Ecological Transition - 
+# "The vulnerability of municipalities to clay shrink-swell hazard:
+# calculation method and typological classification"
+# https://www.statistiques.developpement-durable.gouv.fr/media/613/download?inline
+
+
+
