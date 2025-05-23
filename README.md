@@ -1,4 +1,4 @@
-# natural_disaster_clay_momement
+# natural_disaster_clay_movement
 EdX - HarvardX: Data Science: Capstone - natural_disaster_clay_momement
 
 This project is an assessment, part of the online course "HarvardX: Data Science: Capstone" from Harvard University on Edx platform ("https://www.edx.org/learn/data-science/harvard-university-data-science-capstone"). 
